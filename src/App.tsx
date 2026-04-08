@@ -260,14 +260,9 @@ function DarkSidebar() {
         </div>
         <div className="flex flex-col gap-6 text-slate-400">
           <button className="p-2 hover:text-white transition-colors rounded-lg hover:bg-white/10"><LayoutGrid className="w-5 h-5" /></button>
-          <button className="p-2 hover:text-white transition-colors rounded-lg hover:bg-white/10"><Workflow className="w-5 h-5" /></button>
-          <button className="p-2 hover:text-white transition-colors rounded-lg hover:bg-white/10"><Users className="w-5 h-5" /></button>
           <button className="p-2 hover:text-white transition-colors rounded-lg hover:bg-white/10"><Settings className="w-5 h-5" /></button>
         </div>
       </div>
-      <button className="p-2 text-slate-400 hover:text-white transition-colors rounded-lg hover:bg-white/10">
-        <LogOut className="w-5 h-5" />
-      </button>
     </motion.div>
   );
 }
@@ -277,15 +272,15 @@ function NavItem({ icon, label, isActive, onClick, badge }: { icon: React.ReactN
     <button
       onClick={onClick}
       className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-        isActive ? 'bg-purple-50 text-purple-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+        isActive ? 'bg-slate-100 text-slate-900' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
       }`}
     >
       <div className="flex items-center gap-3">
-        {React.cloneElement(icon as React.ReactElement, { className: `w-4 h-4 ${isActive ? 'text-purple-600' : 'text-slate-400'}` })}
+        {React.cloneElement(icon as React.ReactElement, { className: `w-4 h-4 ${isActive ? 'text-slate-900' : 'text-slate-400'}` })}
         {label}
       </div>
       {badge && (
-        <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500'}`}>
+        <span className={`text-xs px-2 py-0.5 rounded-full ${isActive ? 'bg-slate-200 text-slate-800' : 'bg-slate-100 text-slate-500'}`}>
           {badge}
         </span>
       )}
@@ -305,7 +300,7 @@ function LightSidebar() {
       className="w-[260px] bg-white h-full border-r border-slate-200 flex flex-col shrink-0 z-10"
     >
       <div className="p-6 flex items-center justify-between border-b border-slate-100">
-        <h1 className="text-xl font-bold text-slate-900">Opero AI</h1>
+        <h1 className="text-xl font-bold text-slate-900">ShopGen</h1>
         <button className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
           <ChevronRight className="w-4 h-4 text-slate-500" />
         </button>
@@ -321,20 +316,12 @@ function LightSidebar() {
               isActive={activeMenu === 'overview'} 
               onClick={() => setActiveMenu('overview')} 
             />
-            <NavItem 
-              icon={<Workflow />} 
-              label="全部工作流" 
-              isActive={activeMenu === 'all-workflows'} 
-              onClick={() => setActiveMenu('all-workflows')} 
-              badge="3"
-            />
           </div>
         </div>
 
         <div className="px-4">
           <div className="flex items-center justify-between mb-2 px-2">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">我的项目</p>
-            <button className="text-slate-400 hover:text-purple-600 transition-colors"><Plus className="w-4 h-4" /></button>
           </div>
           <div className="space-y-1">
             <NavItem 
@@ -357,32 +344,6 @@ function LightSidebar() {
             />
           </div>
         </div>
-
-        <div className="px-4 mt-auto">
-          <p className="text-xs font-bold text-slate-400 mb-2 px-2 uppercase tracking-wider">工具</p>
-          <div className="space-y-1">
-            <NavItem icon={<Cloud />} label="集成中心" />
-            <NavItem icon={<Settings />} label="设置" />
-          </div>
-        </div>
-      </div>
-
-      {/* Theme Toggle */}
-      <div className="p-4 border-t border-slate-100">
-        <div className="flex items-center bg-slate-100 rounded-xl p-1">
-          <button 
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${!isDark ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            onClick={() => setIsDark(false)}
-          >
-            <Sun className="w-4 h-4" /> Light
-          </button>
-          <button 
-            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-all ${isDark ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-            onClick={() => setIsDark(true)}
-          >
-            <Moon className="w-4 h-4" /> Dark
-          </button>
-        </div>
       </div>
     </motion.div>
   );
@@ -396,22 +357,8 @@ function TopNav() {
       transition={{ duration: 0.4 }}
       className="h-[88px] px-8 flex items-center justify-between shrink-0 bg-[#F5F6FA]"
     >
-      <h2 className="text-2xl font-bold text-slate-900">Welcome back, Merchant 👋</h2>
+      <h2 className="text-2xl font-bold text-slate-900">工作台</h2>
       <div className="flex items-center gap-6">
-        <button className="text-slate-400 hover:text-slate-600 transition-colors">
-          <Search className="w-5 h-5" />
-        </button>
-        <button className="text-slate-400 hover:text-slate-600 transition-colors relative">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full border-2 border-[#F5F6FA]"></span>
-        </button>
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-600">
-          <Calendar className="w-5 h-5 text-slate-400" />
-          08 Apr 2026
-        </div>
-        <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm cursor-pointer">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Merchant" alt="User" className="w-full h-full object-cover" />
-        </div>
       </div>
     </motion.div>
   );
@@ -479,9 +426,6 @@ function TaskCard({ task, index }: { task: Task; index: number; key?: string | n
     >
       <div className="flex items-start justify-between mb-1">
         <h4 className="font-semibold text-slate-900 text-[15px] leading-snug">{task.title}</h4>
-        <button className="text-slate-300 hover:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
       </div>
       <p className="text-xs text-slate-500 mb-4">{task.workflow}</p>
       
@@ -543,9 +487,6 @@ function Column({ title, count, tasks }: { title: string, count: number, tasks: 
     <div className="flex flex-col w-[340px] shrink-0 h-full">
       <div className="flex items-center justify-between mb-4 px-1">
         <h3 className="text-sm font-medium text-slate-500">{title} ({count})</h3>
-        <button className="text-sm font-medium text-slate-400 hover:text-slate-600 flex items-center gap-1 transition-colors">
-          <Plus className="w-4 h-4" /> 新建任务
-        </button>
       </div>
       <div className="flex-1 overflow-y-auto flex flex-col gap-4 pb-4 pr-2 border-2 border-dashed border-slate-200 rounded-2xl p-2 bg-slate-50/50">
         {tasks.map((task, index) => (
@@ -576,9 +517,6 @@ const AgentNode = ({ data }: any) => {
             <p className="text-xs font-medium text-slate-500">{data.agentName}</p>
           </div>
         </div>
-        <button className="text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
-          <MoreVertical className="w-4 h-4" />
-        </button>
       </div>
       
       <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-100">
@@ -779,7 +717,6 @@ function WorkflowView() {
               <p className="text-xs text-slate-500">美工 Agent</p>
             </div>
           </div>
-          <button className="text-slate-400 hover:text-slate-600"><MoreHorizontal className="w-4 h-4" /></button>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
