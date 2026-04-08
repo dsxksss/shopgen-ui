@@ -1,4 +1,4 @@
-﻿import type { AgentProfile, RuntimeStatus, WorkspaceView } from './types';
+import type { AgentProfile, RuntimeStatus, WorkspaceHistoryBundle, WorkspaceView } from './types';
 
 declare global {
   interface Window {
@@ -28,4 +28,28 @@ export function getAgentCatalog() {
 
 export function generateWorkspaceView(prompt: string, scenario: string) {
   return invokeCommand<WorkspaceView>('generate_workspace_view', { prompt, scenario });
+}
+
+export function loadWorkspaceHistory() {
+  return invokeCommand<WorkspaceHistoryBundle>('load_workspace_history');
+}
+
+export function switchWorkspace(requestId: string) {
+  return invokeCommand<WorkspaceView>('switch_workspace', { requestId });
+}
+
+export function clearWorkspaceView() {
+  return invokeCommand<void>('clear_workspace_view');
+}
+
+export function deleteWorkspace(requestId: string) {
+  return invokeCommand<void>('delete_workspace', { requestId });
+}
+
+export function renameWorkspace(requestId: string, title: string) {
+  return invokeCommand<WorkspaceHistoryBundle>('rename_workspace', { requestId, title });
+}
+
+export function togglePinWorkspace(requestId: string) {
+  return invokeCommand<WorkspaceHistoryBundle>('toggle_pin_workspace', { requestId });
 }

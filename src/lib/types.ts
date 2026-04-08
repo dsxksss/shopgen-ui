@@ -1,4 +1,4 @@
-﻿export interface AgentProfile {
+export interface AgentProfile {
   id: string;
   name: string;
   title: string;
@@ -135,4 +135,19 @@ export interface WorkspaceView {
   tasks: DashboardTask[];
   workflow: WorkflowPayload;
   wizard: WizardPayload;
+}
+
+export interface WorkspaceHistoryItem {
+  requestId: string;
+  scenario: string;
+  summary: string;
+  merchantIntent: string;
+  generatedAt: string;
+  title?: string | null;
+  pinned: boolean;
+}
+
+export interface WorkspaceHistoryBundle {
+  currentWorkspace: WorkspaceView | null;
+  history: WorkspaceHistoryItem[];
 }
