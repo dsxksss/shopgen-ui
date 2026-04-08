@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 build/
 dist/
 coverage/
@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+src-tauri/target/
+src-tauri/gen/
+.vscode/
+.idea/
+*.tsbuildinfo
