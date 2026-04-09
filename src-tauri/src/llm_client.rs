@@ -1,6 +1,6 @@
 use regex::Regex;
 use reqwest::Client;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::commands::get_runtime_status_internal;
 use crate::models::{OperationPlan, WorkflowStage};
@@ -75,10 +75,20 @@ pub async fn request_stage_execution(
 
     crate::emit_log(app, "info", &format!("[{}] 开始思考任务「{}」...", agent_title, stage.name));
 
+    let mut context_history = String::new();
+    let completed_stages: Vec<_> = plan.workflow_stages.iter().filter(|s| s.status == "done").collect();
+    if !completed_stages.is_empty() {
+        context_history.push_str("\n\n## 上游环节已产出的背景信息 (Context History):\n");
+        for prev in completed_stages {
+            context_history.push_str(&format!("### 阶段: {}\n负责人: {}\n产出产物:\n{}\n---\n", prev.name, prev.owner, prev.output.as_deref().unwrap_or("无内容")));
+        }
+    }
+
     let user_prompt = format!(
-        "Scenario: {}\nMerchant request: {}\n\nStage name: {}\nStage goal: {}\nStage action: {}\n\nReturn the concrete deliverable only.",
+        "Scenario: {}\nMerchant request: {}\n{}\n\nStage name: {}\nStage goal: {}\nStage action: {}\n\nReturn the concrete deliverable only.",
         plan.scenario,
         plan.merchant_intent,
+        context_history,
         stage.name,
         stage.goal,
         stage.action,
@@ -112,12 +122,21 @@ pub async fn request_stage_execution(
     }
     println!("<<< [{}] 收到 API 响应，正在解析内容...", agent_title);
 
-    let response_body: serde_json::Value = response.json().await.map_err(|_| ApiError::ParseFailed)?;
-    let mut text = response_body["content"][0]["text"]
-        .as_str()
-        .or_else(|| response_body["choices"][0]["message"]["content"].as_str())
-        .ok_or(ApiError::ParseFailed)?
-        .to_string();
+    let response_body: Value = response.json().await.map_err(|_| ApiError::ParseFailed)?;
+    
+    // 智能提取：兼容 MiniMax/Anthropic 混合结构
+    let mut text = if let Some(content_array) = response_body["content"].as_array() {
+        content_array.iter()
+            .find(|item: &&Value| item["type"] == "text")
+            .and_then(|item| item["text"].as_str())
+            .ok_or(ApiError::ParseFailed)?
+            .to_string()
+    } else {
+        response_body["choices"][0]["message"]["content"].as_str()
+            .or_else(|| response_body["choices"][0]["text"].as_str())
+            .ok_or(ApiError::ParseFailed)?
+            .to_string()
+    };
 
     crate::emit_log(app, "success", &format!("[{}] 思考完成，正在解析产物...", agent_title));
 
@@ -131,16 +150,18 @@ pub async fn request_stage_execution(
         })
         .collect::<Vec<_>>();
 
-    for (tag, prompt) in replacements {
+    for (tag, prompt) in &replacements {
         crate::emit_log(app, "info", &format!("[{}] 请求生成插图: {}", agent_title, prompt));
-        match request_openrouter_image(app, &prompt).await {
+        match request_openrouter_image(app, prompt).await {
             Ok(image_url) => {
                 crate::emit_log(app, "success", &format!("[{}] 插图生成成功", agent_title));
-                text = text.replace(&tag, &format!("![{}]({})", prompt, image_url));
+                let replacement = format!("![{}]({})", prompt, image_url);
+                text = text.replace(tag, &replacement);
             }
             Err(err) => {
                 crate::emit_log(app, "error", &format!("[{}] 插图生成失败: {}", agent_title, err));
-                text = text.replace(&tag, &format!("> Image generation failed: {err}"));
+                let replacement = format!("> Image generation failed: {err}");
+                text = text.replace(tag, &replacement);
             }
         }
     }

@@ -16,6 +16,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
   const [isRunningFlow, setIsRunningFlow] = useState(false);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<MenuKey>(scenarioToMenu(scenario));
+  const [planningCache, setPlanningCache] = useState<{ isPlanning: boolean; plan: any | null; prompt: string } | null>(null);
 
   useEffect(() => {
     setActiveMenu(scenarioToMenu(scenario));
@@ -134,13 +135,14 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
         <BoardHeader view={view} setView={setView} onOpenWizard={() => setIsWizardOpen(true)} canRunFlow={Boolean(workspace)} hasCompletedFlow={hasCompletedFlow} isRunningFlow={isRunningFlow} onRunFlow={handleRunFlow} />
         {view === 'kanban' ? <KanbanBoard tasks={tasks} activeScenario={activeScenario} onRunTask={handleRunTask} runningTaskId={runningTaskId} /> : <WorkflowView workflow={workflow} hasPlan={Boolean(workspace)} />}
         <AnimatePresence>
-          {isWizardOpen && <WorkflowWizard scenario={scenario} runtime={runtime} initialPrompt={draftPrompt} onClose={() => setIsWizardOpen(false)} onComplete={(nextWorkspace) => { 
+          {isWizardOpen && <WorkflowWizard scenario={scenario} runtime={runtime} initialPrompt={draftPrompt} planningCache={planningCache} setPlanningCache={setPlanningCache} onClose={() => setIsWizardOpen(false)} onComplete={(nextWorkspace) => { 
             setHistoryBundle((prev) => ({ 
               currentWorkspace: nextWorkspace, 
               history: sortHistoryItems([{ requestId: nextWorkspace.plan.requestId, scenario: nextWorkspace.plan.scenario, summary: nextWorkspace.plan.summary, merchantIntent: nextWorkspace.plan.merchantIntent, generatedAt: nextWorkspace.plan.generatedAt, title: null, pinned: false }, ...prev.history.filter((item) => item.requestId !== nextWorkspace.plan.requestId)]) 
             })); 
             setDraftPrompt(nextWorkspace.plan.merchantIntent); 
             setIsWizardOpen(false); 
+            setPlanningCache(null);
             setView('workflow'); 
           }} />}
         </AnimatePresence>

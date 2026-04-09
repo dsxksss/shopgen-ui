@@ -46,13 +46,23 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
   return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="flex-1 w-full h-full relative bg-[#fafafa]"><ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={(_, node) => setSelectedNodeId(node.id)} nodeTypes={nodeTypes} fitView attributionPosition="bottom-right"><Background color="#e2e8f0" gap={16} size={1} /><Controls className="bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden" /><MiniMap nodeColor={(node) => node.type === 'triggerNode' ? '#c084fc' : node.type === 'conditionNode' ? '#fdba74' : '#94a3b8'} maskColor="rgba(248, 250, 252, 0.7)" className="bg-white border border-slate-200 shadow-sm rounded-xl" /></ReactFlow>{!hasPlan && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-white/95 backdrop-blur rounded-2xl border border-slate-200 px-6 py-4 shadow-sm text-sm text-slate-500">暂无真实流程，先通过 AI 构建流程生成任务。</div></div>}<div className="absolute top-4 right-4 w-80 bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col h-[calc(100%-2rem)] z-10 overflow-hidden"><div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"><div className="flex items-center gap-2"><div className={`w-8 h-8 rounded-lg flex items-center justify-center ${inspector.statusTone === 'done' ? 'bg-green-100 text-green-600' : inspector.statusTone === 'in-progress' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}><ImageIcon className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-slate-900">{inspector.title}</h3><p className="text-xs text-slate-500">{inspector.agentName}</p></div></div></div><div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6"><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">执行状态</label><div className={`${inspector.statusTone === 'done' ? 'bg-green-50 border-green-200' : inspector.statusTone === 'in-progress' ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'} border rounded-lg p-3 flex items-center gap-3`}>{inspector.statusTone === 'done' ? <Check className="w-5 h-5 text-green-500" /> : inspector.statusTone === 'in-progress' ? <Loader2 className="w-5 h-5 text-orange-500 animate-spin" /> : <ShieldAlert className="w-5 h-5 text-slate-400" />}<div><p className={`text-sm font-semibold ${inspector.statusTone === 'done' ? 'text-green-700' : inspector.statusTone === 'in-progress' ? 'text-orange-700' : 'text-slate-700'}`}>{inspector.status}</p><p className={`text-xs ${inspector.statusTone === 'done' ? 'text-green-600/80' : inspector.statusTone === 'in-progress' ? 'text-orange-600/80' : 'text-slate-500'}`}>{inspector.statusSubtitle}</p></div></div></div><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">输入参数</label><div className="space-y-2">{inspector.inputs.map((item) => <div key={item.label} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5"><span className="text-xs text-slate-500 block mb-1">{item.label}</span><span className="text-sm font-medium text-slate-900">{item.value}</span></div>)}</div></div><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">AI 技能调用</label><div className="border border-slate-200 rounded-lg overflow-hidden">{inspector.tools.map((tool, index: number) => <div key={tool.label} className={`p-3 flex items-center justify-between ${index < inspector.tools.length - 1 ? 'border-b border-slate-100' : ''} ${tool.active ? 'bg-slate-50' : 'bg-white'}`}><div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${tool.progress === 100 ? 'bg-green-500' : tool.active ? 'bg-orange-500 animate-pulse' : 'bg-slate-300'}`}></div><span className="text-sm font-medium text-slate-700">{tool.label}</span></div><span className="text-xs text-slate-400">{tool.progress}%</span></div>)}</div></div></div></div></motion.div>;
 }
 
-export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initialPrompt }: { onClose: () => void; onComplete: (view: WorkspaceView) => void; scenario: string; runtime: RuntimeStatus | null; initialPrompt: string }) {
-  const [step, setStep] = useState(1);
-  const [prompt, setPrompt] = useState(initialPrompt);
-  const [loading, setLoading] = useState(false);
+export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initialPrompt, planningCache, setPlanningCache }: { onClose: () => void; onComplete: (view: WorkspaceView) => void; scenario: string; runtime: RuntimeStatus | null; initialPrompt: string; planningCache: any; setPlanningCache: (cache: any) => void }) {
+  const [step, setStep] = useState(planningCache?.step || 1);
+  const [prompt, setPrompt] = useState(planningCache?.prompt || initialPrompt);
+  const [loading, setLoading] = useState(planningCache?.isPlanning || false);
   const [error, setError] = useState('');
-  const [workspace, setWorkspace] = useState<WorkspaceView | null>(null);
-  useEffect(() => { setPrompt(initialPrompt); }, [initialPrompt]);
+  const [workspace, setWorkspace] = useState<WorkspaceView | null>(planningCache?.plan || null);
+
+  useEffect(() => {
+    if (!planningCache && initialPrompt) {
+      setPrompt(initialPrompt);
+    }
+  }, [initialPrompt, planningCache]);
+
+  // 同步状态到全局缓存
+  useEffect(() => {
+    setPlanningCache({ step, prompt, isPlanning: loading, plan: workspace });
+  }, [step, prompt, loading, workspace, setPlanningCache]);
   const wizard: WizardPayload | null = workspace?.wizard ?? null;
 
   async function startGenerate() {
@@ -64,11 +74,14 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
       const result = await generateWorkspaceView(prompt.trim(), scenario);
       setWorkspace(result);
       setStep(3);
+      // 深度同步到父组件，确保即使关闭后再打开也能拿到结果
+      setPlanningCache({ step: 3, prompt: prompt.trim(), isPlanning: false, plan: result });
     } catch (err: unknown) {
       console.error('[ShopGen] Generate failed:', err);
       const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : JSON.stringify(err);
       setError(msg || '生成流程失败（未知错误）');
       setStep(1);
+      setPlanningCache({ step: 1, prompt: prompt.trim(), isPlanning: false, plan: null });
     } finally {
       setLoading(false);
     }
