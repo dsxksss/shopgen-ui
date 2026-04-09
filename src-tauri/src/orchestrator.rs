@@ -3,6 +3,8 @@ use chrono::Utc;
 use reqwest::Client;
 use serde_json::{json, Value};
 use uuid::Uuid;
+use futures::StreamExt;
+use tauri::Emitter;
 use crate::models::*;
 use crate::llm_client::*;
 use crate::store::*;
@@ -46,6 +48,7 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
     let body = json!({
         "model": model,
         "max_tokens": 4000,
+        "stream": true,
         "system": build_system_prompt(),
         "messages": [{
             "role": "user",
@@ -63,29 +66,54 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
         .send()
         .await?
         .error_for_status()?;
-    crate::emit_log(app, "info", "收到大模型响应，正在解析结构化行动方案...");
-
-    let response_body: Value = response.json().await?;
     
-    // 智能提取：遍历 content 数组寻找 text 类型，或直接取 OpenAI 格式的 choices
-    let raw_text = if let Some(content_array) = response_body["content"].as_array() {
-        content_array.iter()
-            .find(|item| item["type"] == "text")
-            .and_then(|item| item["text"].as_str())
-            .map(|s| s.to_string())
-    } else {
-        response_body["choices"][0]["message"]["content"].as_str()
-            .or_else(|| response_body["choices"][0]["text"].as_str())
-            .map(|s| s.to_string())
-    };
+    crate::emit_log(app, "info", "店长 Agent 正在深入思考，请查看下方实时反馈...");
+    
+    let mut stream = response.bytes_stream();
+    let mut full_text = String::new();
+    let mut thinking_text = String::new();
 
-    if raw_text.is_none() {
-        eprintln!("!!! 解析失败。尝试了多种路径依然无法找到内容。API 完整返回: {:?}", response_body);
+    while let Some(item) = stream.next().await {
+        let chunk = item.map_err(|e: reqwest::Error| ApiError::RequestFailed(e.to_string()))?;
+        let text = String::from_utf8_lossy(&chunk);
+        
+        // 处理 SSE 事件流 (兼容 OpenAI 和 Anthropic 格式)
+        for line in text.lines() {
+            if line.starts_with("data: ") {
+                let data = line.trim_start_matches("data: ");
+                if data == "[DONE]" || data.is_empty() { continue; }
+                
+                if let Ok(json) = serde_json::from_str::<Value>(data) {
+                    // 1. Anthropic 格式提取 (content_block_delta)
+                    if let Some(delta) = json.get("delta") {
+                        if let Some(txt) = delta.get("text").and_then(Value::as_str) {
+                            full_text.push_str(txt);
+                        }
+                        if let Some(think) = delta.get("thinking").and_then(Value::as_str) {
+                            thinking_text.push_str(think);
+                            let _ = app.emit("planner-thought", think);
+                        }
+                    } 
+                    // 2. OpenAI 格式提取
+                    else if let Some(choices) = json.get("choices").and_then(|c| c.as_array()) {
+                        if !choices.is_empty() {
+                            if let Some(delta) = choices[0].get("delta") {
+                                if let Some(txt) = delta.get("content").and_then(Value::as_str) {
+                                    full_text.push_str(txt);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if full_text.is_empty() {
         return Err(ApiError::EmptyResponse);
     }
     
-    let raw_text = raw_text.unwrap();
-    let payload: Value = serde_json::from_str(&raw_text)?;
+    let payload: Value = serde_json::from_str(&full_text)?;
 
     let summary = payload.get("summary").and_then(Value::as_str).ok_or_else(|| ApiError::InvalidPayload("缺少 summary".into()))?.to_string();
     let merchant_intent = payload.get("merchantIntent").and_then(Value::as_str).ok_or_else(|| ApiError::InvalidPayload("缺少 merchantIntent".into()))?.to_string();
@@ -110,7 +138,7 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
         execution_checklist,
         risks,
         daily_brief,
-        raw_text,
+        raw_text: full_text,
     })
 }
 

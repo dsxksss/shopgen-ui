@@ -16,7 +16,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
   const [isRunningFlow, setIsRunningFlow] = useState(false);
   const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<MenuKey>(scenarioToMenu(scenario));
-  const [planningCache, setPlanningCache] = useState<{ isPlanning: boolean; plan: any | null; prompt: string } | null>(null);
+  const [planningCache, setPlanningCache] = useState<{ isPlanning: boolean; plan: any | null; prompt: string; thought: string } | null>(null);
 
   useEffect(() => {
     setActiveMenu(scenarioToMenu(scenario));
