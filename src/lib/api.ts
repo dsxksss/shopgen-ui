@@ -22,6 +22,10 @@ export function getRuntimeStatus() {
   return invokeCommand<RuntimeStatus>('get_runtime_status');
 }
 
+export function saveApiConfig(baseUrl: string, apiKey: string, model: string) {
+  return invokeCommand<RuntimeStatus>('save_api_config', { baseUrl, apiKey, model });
+}
+
 export function getAgentCatalog() {
   return invokeCommand<AgentProfile[]>('get_agent_catalog');
 }

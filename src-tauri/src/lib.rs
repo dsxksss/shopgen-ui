@@ -1,4 +1,4 @@
-﻿use std::{collections::BTreeMap, env, fs, path::PathBuf};
+use std::{collections::BTreeMap, env, fs, path::PathBuf};
 
 use chrono::Utc;
 use dotenvy::dotenv;
@@ -27,7 +27,16 @@ pub struct RuntimeStatus {
     provider: String,
     base_url: String,
     model: String,
+    api_key: Option<String>,
     ready_message: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ApiConfig {
+    pub base_url: Option<String>,
+    pub api_key: Option<String>,
+    pub model: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -92,6 +101,7 @@ pub struct DashboardTask {
     status: String,
     progress_color: String,
     date_color: String,
+    summary: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -298,6 +308,21 @@ fn app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, ApiError> {
     Ok(app_dir)
 }
 
+fn api_config_path(app: &tauri::AppHandle) -> Result<PathBuf, ApiError> {
+    Ok(app_data_dir(app)?.join("api-config.json"))
+}
+
+fn read_api_config(app: &tauri::AppHandle) -> ApiConfig {
+    if let Ok(path) = api_config_path(app) {
+        if let Ok(content) = fs::read_to_string(path) {
+            if let Ok(config) = serde_json::from_str(&content) {
+                return config;
+            }
+        }
+    }
+    ApiConfig::default()
+}
+
 fn workspace_store_path(app: &tauri::AppHandle) -> Result<PathBuf, ApiError> {
     Ok(app_data_dir(app)?.join("workspace-store.json"))
 }
@@ -472,12 +497,12 @@ fn build_system_prompt() -> String {
     ].join("\n")
 }
 
-async fn request_plan(prompt: String, scenario: String) -> Result<OperationPlan, ApiError> {
-    dotenv().ok();
+async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: String) -> Result<OperationPlan, ApiError> {
+    let status = get_runtime_status_internal(app);
 
-    let base_url = read_env("ANTHROPIC_BASE_URL")?;
-    let api_key = read_env("ANTHROPIC_API_KEY")?;
-    let model = env::var("MINIMAX_MODEL").unwrap_or_else(|_| "MiniMax-M2.7".to_string());
+    let base_url = status.base_url;
+    let api_key = status.api_key.ok_or_else(|| ApiError::MissingEnv("API Key 未配置，请在左侧设置面板中配置"))?;
+    let model = status.model;
 
     let endpoint = format!("{}/v1/messages", base_url.trim_end_matches('/'));
     let body = json!({
@@ -566,6 +591,7 @@ fn build_tasks(plan: &OperationPlan) -> Vec<DashboardTask> {
             status: task_status.clone(),
             progress_color: if task_status == "done" { "bg-green-500".into() } else if task_status == "in-progress" { "bg-orange-400".into() } else { "bg-red-400".into() },
             date_color: if task_status == "done" { "text-slate-500 bg-slate-100".into() } else if task_status == "in-progress" { "text-orange-500 bg-orange-50".into() } else { "text-red-500 bg-red-50".into() },
+            summary: assignment.deliverable.clone(),
         }
     }).collect()
 }
@@ -573,13 +599,14 @@ fn build_tasks(plan: &OperationPlan) -> Vec<DashboardTask> {
 fn build_stage_output(stage: &WorkflowStage, plan: &OperationPlan) -> String {
     let owner = normalize_agent_id(&stage.owner);
     match owner.as_str() {
-        "designer" => format!("???????????????????????{}???????? Banner ????????", plan.summary),
-        "copywriter" => format!("???????????{}??????????????????????????", plan.merchant_intent),
-        "operator" => format!("????????????????????????????????????{}??", stage.goal),
-        "service" => format!("?????????????{}????????????????????", stage.goal),
-        "finance" => format!("???????????????????????????????????????"),
-        "warehouse" => format!("??????????????????????????????{}???????", stage.goal),
-        _ => format!("?????????????{}?????????????????????????", stage.name),
+        "manager" => format!("总览决策：\n- 阶段目标已下发至各执行节点\n- 核心关注点：转化率指标及成本控制\n- 进度提示：已确认各 Agent 接受当前目标，风险可控。"),
+        "designer" => format!("设计清单：\n- 基于需求「{}」，主视觉基调设定完成。\n- 输出资产：首页 Banner x1、商品主图 x5 (已上传云素材库)。\n- 交付格式：高清源文件。\n- 产物状态：素材已通过规范审核，可随时调用。", plan.merchant_intent),
+        "copywriter" => format!("文案提炼：\n- 核心卖点已经梳理，符合平台 SEO 检索规则。\n- 产出内容：主标题 (约 25 字，突出应用场景)、副标题 (强调折扣或促销痛点)。\n- 平台适配性：已完成关键词饱和度测试与违禁词排查。"),
+        "operator" => format!("运营策略：\n- 基于目标「{}」的数据监控指标看板已配置完成。\n- 核心操作：自动竞价策略正在启动、ROI 目标已分配至具体推广单元。\n- 预期反馈：预估转化率提升 15%，流量倾斜埋点就绪。", stage.goal),
+        "service" => format!("客服执行：\n- 匹配任务「{}」的标准工单流与快捷话术已同步至客服工作台。\n- 特别处理：针对本次活动高频咨询预设有 5 条 AI 自动回复语料。\n- 服务指标：预期 3 分钟回复率提升至 95%。", stage.goal),
+        "finance" => format!("财务复核：\n- 流水归集通道与退款率监控预警正常。\n- 资金状况：预算上限已锁定，当前实际花费在总池子的 20% 水位内。\n- 利润预估：单件商品预期毛利率满足预设安全标准，无亏本风险。"),
+        "warehouse" => format!("仓储调度：\n- 针对「{}」的备货排期与物料耗损工作已部署到位。\n- 库容反馈：当前 SKU 跨仓调拨指令已发送，预估周转天数正常。\n- 物流防爆：包裹已对接云端智能推单器，无爆仓风险。", stage.goal),
+        _ => format!("阶段成果：\n- 执行动作：{}。\n- 验收结果：经自检确认符合本阶段质量验收标准，各项前置数据与物料已闭环，具备进入流程下一节点的条件。", stage.action),
     }
 }
 
@@ -587,7 +614,7 @@ fn stage_outputs(stage: &WorkflowStage) -> Vec<InspectorInput> {
     stage
         .output
         .as_ref()
-        .map(|output| vec![InspectorInput { label: "????".into(), value: output.clone() }])
+        .map(|output| vec![InspectorInput { label: "阶段产出".into(), value: output.clone() }])
         .unwrap_or_default()
 }
 
@@ -806,17 +833,35 @@ fn get_agent_catalog() -> Vec<AgentProfile> {
 }
 
 #[tauri::command]
-fn get_runtime_status() -> RuntimeStatus {
+fn get_runtime_status(app: tauri::AppHandle) -> RuntimeStatus {
+    get_runtime_status_internal(&app)
+}
+
+fn get_runtime_status_internal(app: &tauri::AppHandle) -> RuntimeStatus {
     dotenv().ok();
-    let base_url = env::var("ANTHROPIC_BASE_URL").unwrap_or_else(|_| "https://api.minimaxi.com/anthropic".into());
-    let model = env::var("MINIMAX_MODEL").unwrap_or_else(|_| "MiniMax-M2.7".into());
-    let configured = env::var("ANTHROPIC_API_KEY").map(|v| !v.trim().is_empty()).unwrap_or(false);
-    RuntimeStatus { configured, provider: "MiniMax Anthropic Compatible API".into(), base_url, model, ready_message: if configured { "Rust 后端已接入真实 AI 服务，可以直接生成运营方案。".into() } else { "尚未检测到 API Key，请先配置 ANTHROPIC_API_KEY。".into() } }
+    let config = read_api_config(app);
+    let base_url = config.base_url.filter(|v| !v.trim().is_empty()).unwrap_or_else(|| env::var("ANTHROPIC_BASE_URL").unwrap_or_else(|_| "https://api.minimaxi.com/anthropic".into()));
+    let model = config.model.filter(|v| !v.trim().is_empty()).unwrap_or_else(|| env::var("MINIMAX_MODEL").unwrap_or_else(|_| "MiniMax-M2.7".into()));
+    let api_key = config.api_key.filter(|v| !v.trim().is_empty()).or_else(|| env::var("ANTHROPIC_API_KEY").ok());
+    let configured = api_key.as_ref().map(|v| !v.trim().is_empty()).unwrap_or(false);
+    RuntimeStatus { configured, provider: "MiniMax Anthropic Compatible API".into(), base_url, model, api_key: api_key.clone(), ready_message: if configured { "Rust 后端已接入真实 AI 服务，可以直接生成运营方案。".into() } else { "尚未配置真实 API Key，请在左侧设置中配置或通过环境变量提供。".into() } }
+}
+
+#[tauri::command]
+fn save_api_config(app: tauri::AppHandle, base_url: String, api_key: String, model: String) -> Result<RuntimeStatus, ApiError> {
+    let config = ApiConfig {
+        base_url: Some(base_url),
+        api_key: Some(api_key),
+        model: Some(model),
+    };
+    let path = api_config_path(&app)?;
+    fs::write(path, serde_json::to_string_pretty(&config)?)?;
+    Ok(get_runtime_status_internal(&app))
 }
 
 #[tauri::command]
 async fn generate_workspace_view(app: tauri::AppHandle, prompt: String, scenario: String) -> Result<WorkspaceView, ApiError> {
-    let plan = request_plan(prompt.clone(), scenario).await?;
+    let plan = request_plan(&app, prompt.clone(), scenario).await?;
     let workspace = build_workspace_view(prompt, plan);
     save_workspace_view(&app, &workspace)?;
     Ok(workspace)
@@ -865,7 +910,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_agent_catalog, get_runtime_status, generate_workspace_view, load_workspace_history, switch_workspace, clear_workspace_view, delete_workspace, rename_workspace, toggle_pin_workspace, run_workspace_flow])
+        .invoke_handler(tauri::generate_handler![get_agent_catalog, get_runtime_status, save_api_config, generate_workspace_view, load_workspace_history, switch_workspace, clear_workspace_view, delete_workspace, rename_workspace, toggle_pin_workspace, run_workspace_flow])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

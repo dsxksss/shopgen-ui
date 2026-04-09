@@ -46,7 +46,7 @@ import {
   Pin,
   Pencil,
 } from 'lucide-react';
-import { clearWorkspaceView, deleteWorkspace, generateWorkspaceView, getRuntimeStatus, loadWorkspaceHistory, renameWorkspace, runWorkspaceFlow, switchWorkspace, togglePinWorkspace } from './lib/api';
+import { clearWorkspaceView, deleteWorkspace, generateWorkspaceView, getRuntimeStatus, loadWorkspaceHistory, renameWorkspace, runWorkspaceFlow, switchWorkspace, togglePinWorkspace, saveApiConfig } from './lib/api';
 import type {
   DashboardTask,
   RuntimeStatus,
@@ -60,6 +60,12 @@ import type {
 
 type AgentType = 'manager' | 'designer' | 'copywriter' | 'operator' | 'service' | 'finance' | 'warehouse';
 type MenuKey = 'overview' | 'new-product' | 'promo' | 'daily';
+
+const DEFAULT_PROMPTS: Record<string, string> = {
+  '新品上架流程': '请帮我为春季新款女装做一套完整的新品上架方案，包含主图方向、标题卖点、上架节奏、库存建议和客服话术。',
+  '促销活动策划': '请帮我策划一场“五一特惠”大促活动，包含活动主题、打折满减方案、站内外推广节奏以及预估营销预算。',
+  '日常经营管理': '请帮我梳理日常店铺管理的数据监控看板，需要关注的转化率指标、客服关键响应要求，以及每周库存盘点重点。',
+};
 
 interface AgentInfo {
   id: AgentType;
@@ -142,8 +148,8 @@ function buildReactFlowPayload(payload: WorkflowPayload) {
   return { nodes, edges };
 }
 
-function DarkSidebar() {
-  return <motion.div initial={{ x: -72 }} animate={{ x: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="w-[72px] bg-[#1E1E24] h-full flex flex-col items-center py-6 justify-between shrink-0 z-20"><div className="flex flex-col items-center gap-8"><div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#1E1E24] mb-4 shadow-lg"><Hexagon className="w-6 h-6 fill-current" /></div><div className="flex flex-col gap-6 text-slate-400"><button className="p-2 hover:text-white transition-colors rounded-lg hover:bg-white/10"><LayoutGrid className="w-5 h-5" /></button><button className="p-2 hover:text-white transition-colors rounded-lg hover:bg-white/10"><Settings className="w-5 h-5" /></button></div></div></motion.div>;
+function DarkSidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
+  return <motion.div initial={{ x: -72 }} animate={{ x: 0 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="w-[72px] bg-[#1E1E24] h-full flex flex-col items-center py-6 justify-between shrink-0 z-20"><div className="flex flex-col items-center gap-8"><div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#1E1E24] mb-4 shadow-lg"><Hexagon className="w-6 h-6 fill-current" /></div><div className="flex flex-col gap-6 text-slate-400"><button className="p-2 hover:text-white transition-colors rounded-lg hover:bg-white/10"><LayoutGrid className="w-5 h-5" /></button><button onClick={onOpenSettings} className="p-2 hover:text-white transition-colors rounded-lg hover:bg-white/10"><Settings className="w-5 h-5" /></button></div></div></motion.div>;
 }
 
 function NavItem({ icon, label, isActive, onClick, badge }: { icon: React.ReactNode; label: string; isActive?: boolean; onClick?: () => void; badge?: string | number }) {
@@ -204,7 +210,7 @@ function HistoryList({ history, currentRequestId, onSwitch, onDelete, onRename, 
     return <div className="text-xs text-slate-400 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100">暂无历史工作区</div>;
   }
 
-  return <div className="space-y-3"><div className="relative"><Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索历史工作区" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" /></div>{filteredHistory.length === 0 ? <div className="text-xs text-slate-400 px-3 py-3 rounded-lg bg-slate-50 border border-slate-100">没有匹配的工作区</div> : <div className="space-y-2">{filteredHistory.map((item) => { const active = item.requestId === currentRequestId; const editing = item.requestId === editingRequestId; const busy = item.requestId === busyRequestId; const customTitle = item.title?.trim(); return <div key={item.requestId} className={`rounded-xl border px-3 py-3 transition-colors ${active ? 'border-slate-300 bg-slate-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}><div className="flex items-start justify-between gap-2"><button onClick={() => onSwitch(item.requestId)} className="min-w-0 flex-1 text-left"><div className="flex items-center gap-2"><span className={`inline-flex h-5 w-5 items-center justify-center rounded-full ${item.pinned ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}><Pin className="w-3 h-3" /></span><span className="text-xs font-semibold text-slate-900 truncate">{historyDisplayTitle(item)}</span>{active && <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-white">当前</span>}</div>{customTitle && <p className="mt-1 text-[10px] text-slate-400">{item.scenario}</p>}<p className="mt-1 text-[11px] text-slate-500 line-clamp-2">{item.summary}</p><p className="mt-2 text-[10px] text-slate-400">{new Date(item.generatedAt).toLocaleString('zh-CN')}</p></button><div className="flex items-center gap-1 shrink-0">{!editing && <><button disabled={busy} onClick={() => handleTogglePin(item.requestId)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"><Pin className="w-3 h-3" />{item.pinned ? '取消' : '置顶'}</button><button disabled={busy} onClick={() => startRename(item)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"><Pencil className="w-3 h-3" />重命名</button></>}<button disabled={busy} onClick={() => onDelete(item.requestId)} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] text-slate-400 hover:bg-slate-100 hover:text-red-500 disabled:opacity-50"><Trash2 className="w-3 h-3" />删除</button></div></div>{editing && <div className="mt-3 space-y-2"><input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') submitRename(item.requestId); if (event.key === 'Escape') cancelRename(); }} placeholder={item.scenario} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none transition focus:border-slate-300" autoFocus /><div className="flex justify-end gap-2"><button onClick={cancelRename} className="rounded-lg px-3 py-1.5 text-[11px] text-slate-500 hover:bg-slate-100">取消</button><button disabled={busy} onClick={() => submitRename(item.requestId)} className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] text-white hover:bg-slate-800 disabled:opacity-50">保存</button></div></div>}</div>; })}</div>}</div>;
+  return <div className="space-y-3"><div className="relative"><Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索历史工作区" className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-9 pr-3 text-xs text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" /></div>{filteredHistory.length === 0 ? <div className="text-xs text-slate-400 px-3 py-3 rounded-lg bg-slate-50 border border-slate-100">没有匹配的工作区</div> : <div className="space-y-2">{filteredHistory.map((item) => { const active = item.requestId === currentRequestId; const editing = item.requestId === editingRequestId; const busy = item.requestId === busyRequestId; const customTitle = item.title?.trim(); return <div key={item.requestId} className={`rounded-xl border px-3 py-3 transition-colors group ${active ? 'border-slate-300 bg-slate-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}><button onClick={() => onSwitch(item.requestId)} className="w-full text-left"><div className="flex items-center gap-2 mb-1.5"><span className={`inline-flex shrink-0 h-5 w-5 items-center justify-center rounded-full ${item.pinned ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}><Pin className="w-3 h-3" /></span><span className="text-xs font-semibold text-slate-900 truncate flex-1">{historyDisplayTitle(item)}</span>{active && <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-slate-900 text-white">当前</span>}</div>{customTitle && <p className="mb-1 text-[10px] text-slate-400">{item.scenario}</p>}<p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{item.summary}</p></button>{!editing && <div className="mt-2.5 pt-2 flex items-center justify-between border-t border-slate-100/60"><span className="text-[10px] text-slate-400">{new Date(item.generatedAt).toLocaleString('zh-CN')}</span><div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"><button disabled={busy} onClick={(e) => { e.stopPropagation(); handleTogglePin(item.requestId); }} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50" title={item.pinned ? '取消置顶' : '置顶'}><Pin className="w-3.5 h-3.5" /></button><button disabled={busy} onClick={(e) => { e.stopPropagation(); startRename(item); }} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50" title="重命名"><Pencil className="w-3.5 h-3.5" /></button><button disabled={busy} onClick={(e) => { e.stopPropagation(); onDelete(item.requestId); }} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50" title="删除"><Trash2 className="w-3.5 h-3.5" /></button></div></div>}{editing && <div className="mt-3 space-y-2"><input value={draftTitle} onChange={(event) => setDraftTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') submitRename(item.requestId); if (event.key === 'Escape') cancelRename(); }} placeholder={item.scenario} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none transition focus:border-slate-300" autoFocus /><div className="flex justify-end gap-2"><button onClick={cancelRename} className="rounded-lg px-3 py-1.5 text-[11px] text-slate-500 hover:bg-slate-100">取消</button><button disabled={busy} onClick={() => submitRename(item.requestId)} className="rounded-lg bg-slate-900 px-3 py-1.5 text-[11px] text-white hover:bg-slate-800 disabled:opacity-50">保存</button></div></div>}</div>; })}</div>}</div>;
 }
 
 function LightSidebar({ activeMenu, setActiveMenu, tasks, history, currentRequestId, onSwitchHistory, onDeleteHistory, onRenameHistory, onTogglePinHistory }: { activeMenu: MenuKey; setActiveMenu: (menu: MenuKey) => void; tasks: DashboardTask[]; history: WorkspaceHistoryItem[]; currentRequestId?: string; onSwitchHistory: (requestId: string) => void; onDeleteHistory: (requestId: string) => void; onRenameHistory: (requestId: string, title: string) => Promise<void>; onTogglePinHistory: (requestId: string) => Promise<void> }) {
@@ -223,12 +229,12 @@ function BoardHeader({ view, setView, onOpenWizard, canRunFlow, hasCompletedFlow
   return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }} className="px-8 py-4 flex items-center justify-between shrink-0 bg-white border-b border-slate-200 z-10 relative"><div className="flex items-center gap-6 w-full max-w-md"><button onClick={() => setView('kanban')} className={`py-2 text-sm font-semibold flex items-center gap-2 transition-colors relative ${view === 'kanban' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid className="w-4 h-4" /> 看板视图{view === 'kanban' && <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-0.5 bg-slate-900" />}</button><button onClick={() => setView('workflow')} className={`py-2 text-sm font-semibold flex items-center gap-2 transition-colors relative ${view === 'workflow' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}><Workflow className="w-4 h-4" /> 流程视图{view === 'workflow' && <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-0.5 bg-slate-900" />}</button></div><div className="flex items-center gap-4">{view === 'workflow' ? <><div className="flex items-center gap-2 mr-4"><span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md ${canRunFlow ? 'text-green-600 bg-green-50' : 'text-slate-500 bg-slate-100'}`}><Check className="w-3 h-3" /> {hasCompletedFlow ? '执行完成' : canRunFlow ? '已保存' : '等待生成'}</span></div><button onClick={onRunFlow} disabled={!canRunFlow || isRunningFlow || hasCompletedFlow} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">{isRunningFlow ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} {isRunningFlow ? '执行中...' : '运行流程'}</button></> : <button onClick={onOpenWizard} className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-sm border border-slate-800"><Sparkles className="w-4 h-4" /> AI 构建流程</button>}</div></motion.div>;
 }
 
-function TaskCard({ task, index }: { task: DashboardTask; index: number }) {
-  return <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.3 }} whileHover={{ y: -4, transition: { duration: 0.2 } }} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing group"><div className="flex items-start justify-between mb-1"><h4 className="font-semibold text-slate-900 text-[15px] leading-snug">{task.title}</h4></div><p className="text-xs text-slate-500 mb-4">{task.workflow}</p><div className="mb-4"><div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-2"><span className="flex items-center gap-1.5"><LayoutGrid className="w-3.5 h-3.5" /> 进度</span><span>{task.progress}/{task.totalSteps}</span></div><div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${task.progressColor}`} style={{ width: `${(task.progress / task.totalSteps) * 100}%` }} /></div></div><div className="flex items-center justify-between pt-4 border-t border-slate-50"><div className={`px-2.5 py-1 rounded-md text-xs font-medium ${task.dateColor}`}>{task.date}</div><div className="flex items-center gap-3"><div className="flex items-center gap-2 text-slate-400"><div className="flex items-center gap-1 hover:text-slate-600 transition-colors cursor-pointer"><MessageSquare className="w-3.5 h-3.5" /><span className="text-xs font-medium">{task.comments}</span></div><div className="flex items-center gap-1 hover:text-slate-600 transition-colors cursor-pointer"><Paperclip className="w-3.5 h-3.5" /><span className="text-xs font-medium">{task.attachments}</span></div></div><div className="flex items-center -space-x-2">{task.agentIds.slice(0, 3).map((agentId, i) => { const agent = AGENTS[normalizeAgentId(agentId)]; return <div key={i} className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white ${agent.color} shadow-sm`} title={agent.name}>{agent.initial}</div>; })}{task.agentIds.length > 3 && <div className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 bg-slate-100 shadow-sm">+{task.agentIds.length - 3}</div>}</div></div></div></motion.div>;
+function TaskCard({ task, index, onClick }: { task: DashboardTask; index: number; onClick?: () => void }) {
+  return <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.3 }} whileHover={{ y: -4, transition: { duration: 0.2 } }} onClick={onClick} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer group"><div className="flex items-start justify-between mb-1"><h4 className="font-semibold text-slate-900 text-[15px] leading-snug">{task.title}</h4></div><p className="text-xs text-slate-500 mb-4">{task.workflow}</p>{task.summary && <div className="mb-4 bg-slate-50 p-2.5 rounded-lg border border-slate-100"><p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">{task.summary}</p></div>}<div className="mb-4"><div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-2"><span className="flex items-center gap-1.5"><LayoutGrid className="w-3.5 h-3.5" /> 进度</span><span>{task.progress}/{task.totalSteps}</span></div><div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${task.progressColor}`} style={{ width: `${(task.progress / task.totalSteps) * 100}%` }} /></div></div><div className="flex items-center justify-between pt-4 border-t border-slate-50"><div className={`px-2.5 py-1 rounded-md text-xs font-medium ${task.dateColor}`}>{task.date}</div><div className="flex items-center gap-3"><div className="flex items-center gap-2 text-slate-400"><div className="flex items-center gap-1 hover:text-slate-600 transition-colors cursor-pointer"><MessageSquare className="w-3.5 h-3.5" /><span className="text-xs font-medium">{task.comments}</span></div><div className="flex items-center gap-1 hover:text-slate-600 transition-colors cursor-pointer"><Paperclip className="w-3.5 h-3.5" /><span className="text-xs font-medium">{task.attachments}</span></div></div><div className="flex items-center -space-x-2">{task.agentIds.slice(0, 3).map((agentId, i) => { const agent = AGENTS[normalizeAgentId(agentId)]; return <div key={i} className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white ${agent.color} shadow-sm`} title={agent.name}>{agent.initial}</div>; })}{task.agentIds.length > 3 && <div className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 bg-slate-100 shadow-sm">+{task.agentIds.length - 3}</div>}</div></div></div></motion.div>;
 }
 
-function Column({ title, count, tasks, emptyText }: { title: string; count: number; tasks: DashboardTask[]; emptyText: string }) {
-  return <div className="flex flex-col w-[340px] shrink-0 h-full"><div className="flex items-center justify-between mb-4 px-1"><h3 className="text-sm font-medium text-slate-500">{title} ({count})</h3></div><div className="flex-1 overflow-y-auto flex flex-col gap-4 pb-4 pr-2 border-2 border-dashed border-slate-200 rounded-2xl p-2 bg-slate-50/50">{tasks.map((task, index) => <React.Fragment key={task.id}><TaskCard task={task} index={index} /></React.Fragment>)}{tasks.length === 0 && <div className="h-24 flex items-center justify-center text-sm text-slate-400 font-medium">{emptyText}</div>}</div></div>;
+function Column({ title, count, tasks, emptyText, onSelectTask }: { title: string; count: number; tasks: DashboardTask[]; emptyText: string; onSelectTask: (id: string) => void }) {
+  return <div className="flex flex-col w-[340px] shrink-0 h-full"><div className="flex items-center justify-between mb-4 px-1"><h3 className="text-sm font-medium text-slate-500">{title} ({count})</h3></div><div className="flex-1 overflow-y-auto flex flex-col gap-4 pb-4 pr-2 border-2 border-dashed border-slate-200 rounded-2xl p-2 bg-slate-50/50">{tasks.map((task, index) => <React.Fragment key={task.id}><TaskCard task={task} index={index} onClick={() => onSelectTask(task.id)} /></React.Fragment>)}{tasks.length === 0 && <div className="h-24 flex items-center justify-center text-sm text-slate-400 font-medium">{emptyText}</div>}</div></div>;
 }
 
 const AgentNode = ({ data }: any) => <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 w-[260px] group hover:border-purple-400 hover:shadow-md transition-all relative"><Handle type="target" position={Position.Left} className="w-2.5 h-2.5 !bg-slate-300 border-2 border-white" /><div className="flex items-start justify-between mb-3"><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${data.agentColor} shadow-sm`}>{data.icon}</div><div><h3 className="text-sm font-bold text-slate-900 leading-tight">{data.title}</h3><p className="text-xs font-medium text-slate-500">{data.agentName}</p></div></div></div><div className="bg-slate-50 rounded-lg p-2.5 border border-slate-100"><p className="text-xs text-slate-600 leading-relaxed">{data.description}</p></div>{data.status === 'done' && <div className="absolute -top-2.5 -right-2.5 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm"><Check className="w-3.5 h-3.5 text-white" /></div>}{data.status === 'in-progress' && <div className="absolute -top-2.5 -right-2.5 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm"><Loader2 className="w-3.5 h-3.5 text-white animate-spin" /></div>}<Handle type="source" position={Position.Right} className="w-2.5 h-2.5 !bg-slate-300 border-2 border-white" /></div>;
@@ -247,9 +253,87 @@ function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload | null;
   return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="flex-1 w-full h-full relative bg-[#fafafa]"><ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={(_, node) => setSelectedNodeId(node.id)} nodeTypes={nodeTypes} fitView attributionPosition="bottom-right"><Background color="#e2e8f0" gap={16} size={1} /><Controls className="bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden" /><MiniMap nodeColor={(node) => node.type === 'triggerNode' ? '#c084fc' : node.type === 'conditionNode' ? '#fdba74' : '#94a3b8'} maskColor="rgba(248, 250, 252, 0.7)" className="bg-white border border-slate-200 shadow-sm rounded-xl" /></ReactFlow>{!hasPlan && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-white/95 backdrop-blur rounded-2xl border border-slate-200 px-6 py-4 shadow-sm text-sm text-slate-500">暂无真实流程，先通过 AI 构建流程生成任务。</div></div>}<div className="absolute top-4 right-4 w-80 bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col h-[calc(100%-2rem)] z-10 overflow-hidden"><div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"><div className="flex items-center gap-2"><div className={`w-8 h-8 rounded-lg flex items-center justify-center ${inspector.statusTone === 'done' ? 'bg-green-100 text-green-600' : inspector.statusTone === 'in-progress' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}><ImageIcon className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-slate-900">{inspector.title}</h3><p className="text-xs text-slate-500">{inspector.agentName}</p></div></div></div><div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6"><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">执行状态</label><div className={`${inspector.statusTone === 'done' ? 'bg-green-50 border-green-200' : inspector.statusTone === 'in-progress' ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'} border rounded-lg p-3 flex items-center gap-3`}>{inspector.statusTone === 'done' ? <Check className="w-5 h-5 text-green-500" /> : inspector.statusTone === 'in-progress' ? <Loader2 className="w-5 h-5 text-orange-500 animate-spin" /> : <ShieldAlert className="w-5 h-5 text-slate-400" />}<div><p className={`text-sm font-semibold ${inspector.statusTone === 'done' ? 'text-green-700' : inspector.statusTone === 'in-progress' ? 'text-orange-700' : 'text-slate-700'}`}>{inspector.status}</p><p className={`text-xs ${inspector.statusTone === 'done' ? 'text-green-600/80' : inspector.statusTone === 'in-progress' ? 'text-orange-600/80' : 'text-slate-500'}`}>{inspector.statusSubtitle}</p></div></div></div><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">输入参数</label><div className="space-y-2">{inspector.inputs.map((item) => <div key={item.label} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5"><span className="text-xs text-slate-500 block mb-1">{item.label}</span><span className="text-sm font-medium text-slate-900">{item.value}</span></div>)}</div></div><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">AI 技能调用</label><div className="border border-slate-200 rounded-lg overflow-hidden">{inspector.tools.map((tool, index) => <div key={tool.label} className={`p-3 flex items-center justify-between ${index < inspector.tools.length - 1 ? 'border-b border-slate-100' : ''} ${tool.active ? 'bg-slate-50' : 'bg-white'}`}><div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${tool.progress === 100 ? 'bg-green-500' : tool.active ? 'bg-orange-500 animate-pulse' : 'bg-slate-300'}`}></div><span className="text-sm font-medium text-slate-700">{tool.label}</span></div><span className="text-xs text-slate-400">{tool.progress}%</span></div>)}</div></div></div></div></motion.div>;
 }
 
+function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onClose: () => void }) {
+  return (
+    <>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px] z-40 rounded-tl-2xl" onClick={onClose} />
+      <motion.div initial={{ x: 400, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 400, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="absolute pt-4 top-0 right-0 bottom-0 w-[460px] bg-white border-l border-slate-200 shadow-2xl z-50 flex flex-col flex-1 pl-4 rounded-tl-2xl">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+          <h2 className="text-lg font-bold text-slate-900">任务详情</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors"><ChevronRight className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 flex-1 overflow-y-auto space-y-6">
+          <div>
+            <div className="mb-3"><span className="text-xs font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-md uppercase tracking-wider">{task.workflow}</span></div>
+            <h3 className="text-xl font-bold text-slate-900 leading-snug">{task.title}</h3>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">执行结论 / 输出产物</label>
+            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+              {task.summary || '暂无输出产物'}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col">
+               <span className="text-xs text-slate-500 block mb-1">当前状态</span>
+               <div className="mt-auto"><span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${task.dateColor}`}>{task.status === 'done' ? '已完成' : task.status === 'in-progress' ? '处理中' : '待处理'}</span></div>
+             </div>
+             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col">
+               <span className="text-xs text-slate-500 block mb-1">执行进度</span>
+               <div className="mt-auto flex items-center gap-2">
+                 <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                   <div className={`h-full rounded-full ${task.progressColor}`} style={{ width: `${(task.progress / task.totalSteps) * 100}%` }} />
+                 </div>
+                 <span className="text-sm font-semibold text-slate-700">{task.progress}/{task.totalSteps}</span>
+               </div>
+             </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">参与 Agent</label>
+            <div className="flex flex-wrap gap-2">
+              {task.agentIds.map((agentId, i) => { 
+                const agent = AGENTS[normalizeAgentId(agentId)]; 
+                return <div key={i} className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                  <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white ${agent.color}`}>{agent.initial}</div>
+                  <span className="text-sm font-medium">{agent.name}</span>
+                </div>; 
+              })}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">附件快照</label>
+            <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+               {Array.from({ length: Math.max(1, task.attachments) }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3 p-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 cursor-pointer transition-colors">
+                     <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-500 flex items-center justify-center shrink-0"><Paperclip className="w-4 h-4" /></div>
+                     <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-700 truncate">相关执行报告_{i+1}.md</p>
+                        <p className="text-xs text-slate-400">{Math.floor(Math.random() * 20 + 5)} KB</p>
+                     </div>
+                     <button className="text-slate-400 hover:text-slate-600 px-2"><ChevronRight className="w-4 h-4" /></button>
+                  </div>
+               ))}
+               {task.attachments === 0 && <div className="p-4 flex items-center justify-center text-sm text-slate-400">暂无附件</div>}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </>
+  );
+}
+
 function KanbanBoard({ tasks, activeScenario }: { tasks: DashboardTask[]; activeScenario: string }) {
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const scopedTasks = activeScenario === '总览' ? tasks : tasks.filter((task) => task.workflow === activeScenario);
-  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex-1 overflow-x-auto overflow-y-hidden px-8 pb-8 pt-4 flex gap-6"><Column title="待办" count={scopedTasks.filter((t) => t.status === 'todo').length} tasks={scopedTasks.filter((t) => t.status === 'todo')} emptyText="等待真实任务生成..." /><Column title="执行中" count={scopedTasks.filter((t) => t.status === 'in-progress').length} tasks={scopedTasks.filter((t) => t.status === 'in-progress')} emptyText="当前没有执行中的真实任务" /><Column title="已完成" count={scopedTasks.filter((t) => t.status === 'done').length} tasks={scopedTasks.filter((t) => t.status === 'done')} emptyText="完成任务后会显示在这里" /></motion.div>;
+  const selectedTask = scopedTasks.find(t => t.id === selectedTaskId);
+  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex-1 overflow-hidden px-8 pb-8 pt-4 flex gap-6 relative">
+    <Column title="待办" count={scopedTasks.filter((t) => t.status === 'todo').length} tasks={scopedTasks.filter((t) => t.status === 'todo')} emptyText="等待真实任务生成..." onSelectTask={setSelectedTaskId} />
+    <Column title="执行中" count={scopedTasks.filter((t) => t.status === 'in-progress').length} tasks={scopedTasks.filter((t) => t.status === 'in-progress')} emptyText="当前没有执行中的真实任务" onSelectTask={setSelectedTaskId} />
+    <Column title="已完成" count={scopedTasks.filter((t) => t.status === 'done').length} tasks={scopedTasks.filter((t) => t.status === 'done')} emptyText="完成任务后会显示在这里" onSelectTask={setSelectedTaskId} />
+    <AnimatePresence>
+      {selectedTask && <TaskDetailsDrawer task={selectedTask} onClose={() => setSelectedTaskId(null)} />}
+    </AnimatePresence>
+  </motion.div>;
 }
 
 function WorkflowWizard({ onClose, onComplete, scenario, runtime, initialPrompt }: { onClose: () => void; onComplete: (view: WorkspaceView) => void; scenario: string; runtime: RuntimeStatus | null; initialPrompt: string }) {
@@ -289,7 +373,16 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
   const [isRunningFlow, setIsRunningFlow] = useState(false);
   const [activeMenu, setActiveMenu] = useState<MenuKey>(scenarioToMenu(scenario));
 
-  useEffect(() => { if (activeMenu !== 'overview') setScenario(menuToScenario(activeMenu)); }, [activeMenu, setScenario]);
+  useEffect(() => { 
+    if (activeMenu !== 'overview') {
+       const newScenario = menuToScenario(activeMenu);
+       setScenario(newScenario); 
+       if (Object.values(DEFAULT_PROMPTS).includes(draftPrompt)) {
+           setDraftPrompt(DEFAULT_PROMPTS[newScenario] || draftPrompt);
+       }
+    }
+  }, [activeMenu, setScenario, draftPrompt, setDraftPrompt]);
+  
   useEffect(() => { setActiveMenu(scenarioToMenu(scenario)); }, [scenario]);
 
   const workspace = historyBundle.currentWorkspace;
@@ -299,6 +392,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
   const hasCompletedFlow = tasks.length > 0 && tasks.every((task) => task.status === 'done');
 
   async function handleClear() {
+    if (!window.confirm('确定要清空当前的整个工作区吗？这会导致当前项目进度完全丢失。')) return;
     await clearWorkspaceView();
     setHistoryBundle({ currentWorkspace: null, history: [] });
   }
@@ -311,6 +405,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
   }
 
   async function handleDeleteHistory(requestId: string) {
+    if (!window.confirm('确定要永久删除这条历史记录吗？')) return;
     await deleteWorkspace(requestId);
     const nextBundle = await loadWorkspaceHistory();
     setHistoryBundle(nextBundle);
@@ -345,11 +440,33 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
   return <><LightSidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} tasks={tasks} history={historyBundle.history} currentRequestId={workspace?.plan.requestId} onSwitchHistory={handleSwitchHistory} onDeleteHistory={handleDeleteHistory} onRenameHistory={handleRenameHistory} onTogglePinHistory={handleTogglePinHistory} /><div className="flex-1 flex flex-col h-full overflow-hidden bg-[#F5F6FA] relative"><TopNav runtime={runtime} activeScenario={activeScenario} hasWorkspace={Boolean(workspace)} onClear={handleClear} /><BoardHeader view={view} setView={setView} onOpenWizard={() => setIsWizardOpen(true)} canRunFlow={Boolean(workspace)} hasCompletedFlow={hasCompletedFlow} isRunningFlow={isRunningFlow} onRunFlow={handleRunFlow} />{view === 'kanban' ? <KanbanBoard tasks={tasks} activeScenario={activeScenario} /> : <WorkflowView workflow={workflow} hasPlan={Boolean(workspace)} />}<AnimatePresence>{isWizardOpen && <WorkflowWizard scenario={scenario} runtime={runtime} initialPrompt={draftPrompt} onClose={() => setIsWizardOpen(false)} onComplete={(nextWorkspace) => { setHistoryBundle((prev) => ({ currentWorkspace: nextWorkspace, history: sortHistoryItems([{ requestId: nextWorkspace.plan.requestId, scenario: nextWorkspace.plan.scenario, summary: nextWorkspace.plan.summary, merchantIntent: nextWorkspace.plan.merchantIntent, generatedAt: nextWorkspace.plan.generatedAt, title: null, pinned: false }, ...prev.history.filter((item) => item.requestId !== nextWorkspace.plan.requestId)]) })); setDraftPrompt(nextWorkspace.plan.merchantIntent); setIsWizardOpen(false); setView('workflow'); }} />}</AnimatePresence></div></>;
 }
 
+function SettingsModal({ runtime, onClose, onSaved }: { runtime: RuntimeStatus | null, onClose: () => void, onSaved: (r: RuntimeStatus) => void }) {
+  const [baseUrl, setBaseUrl] = useState(runtime?.baseUrl || 'https://api.minimaxi.com/anthropic');
+  const [apiKey, setApiKey] = useState(runtime?.apiKey || '');
+  const [model, setModel] = useState(runtime?.model || 'MiniMax-M2.7');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSave() {
+    setLoading(true);
+    try {
+      const result = await saveApiConfig(baseUrl, apiKey, model);
+      onSaved(result);
+    } catch (err) {
+      alert(String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-50 flex items-center justify-center p-8"><motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-2xl shadow-xl w-[480px] overflow-hidden"><div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between"><h2 className="text-lg font-bold text-slate-900">API 配置</h2><button onClick={onClose} className="text-slate-400 hover:text-slate-600"><ChevronDown className="w-5 h-5" /></button></div><div className="p-6 space-y-4"><div><label className="block text-xs font-bold text-slate-500 mb-1.5">API Base URL</label><input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-all" /></div><div><label className="block text-xs font-bold text-slate-500 mb-1.5">Model</label><input value={model} onChange={e => setModel(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-all" /></div><div><label className="block text-xs font-bold text-slate-500 mb-1.5">API Key</label><input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-all" placeholder="sk-..." /></div><div className="pt-4 flex justify-end gap-3"><button onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">取消</button><button onClick={handleSave} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50">{loading ? '保存中...' : '保存'}</button></div></div></motion.div></div>;
+}
+
 export default function App() {
   const [runtime, setRuntime] = useState<RuntimeStatus | null>(null);
   const [scenario, setScenario] = useState('新品上架流程');
   const [historyBundle, setHistoryBundle] = useState<WorkspaceHistoryBundle>({ currentWorkspace: null, history: [] });
   const [draftPrompt, setDraftPrompt] = useState('请帮我为春季新款女装做一套完整的新品上架方案，包含主图方向、标题卖点、上架节奏、库存建议和客服话术。');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -374,5 +491,5 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
-  return <div className="flex h-screen w-full bg-[#F5F6FA] text-slate-800 font-sans overflow-hidden"><DarkSidebar /><MainContent runtime={runtime} historyBundle={historyBundle} setHistoryBundle={setHistoryBundle} scenario={scenario} setScenario={setScenario} draftPrompt={draftPrompt} setDraftPrompt={setDraftPrompt} /></div>;
+  return <div className="flex h-screen w-full bg-[#F5F6FA] text-slate-800 font-sans overflow-hidden"><DarkSidebar onOpenSettings={() => setIsSettingsOpen(true)} /><MainContent runtime={runtime} historyBundle={historyBundle} setHistoryBundle={setHistoryBundle} scenario={scenario} setScenario={setScenario} draftPrompt={draftPrompt} setDraftPrompt={setDraftPrompt} /><AnimatePresence>{isSettingsOpen && <SettingsModal runtime={runtime} onClose={() => setIsSettingsOpen(false)} onSaved={(nextRuntime) => { setRuntime(nextRuntime); setIsSettingsOpen(false); }} />}</AnimatePresence></div>;
 }

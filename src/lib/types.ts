@@ -12,7 +12,14 @@ export interface RuntimeStatus {
   provider: string;
   baseUrl: string;
   model: string;
+  apiKey?: string | null;
   readyMessage: string;
+}
+
+export interface ApiConfig {
+  baseUrl?: string;
+  apiKey?: string;
+  model?: string;
 }
 
 export interface AgentAssignment {
@@ -66,6 +73,7 @@ export interface DashboardTask {
   status: 'todo' | 'in-progress' | 'done';
   progressColor: string;
   dateColor: string;
+  summary: string;
 }
 
 export interface WorkflowNodeItem {
