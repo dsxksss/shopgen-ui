@@ -22,8 +22,8 @@ export function getRuntimeStatus() {
   return invokeCommand<RuntimeStatus>('get_runtime_status');
 }
 
-export function saveApiConfig(baseUrl: string, apiKey: string, model: string) {
-  return invokeCommand<RuntimeStatus>('save_api_config', { baseUrl, apiKey, model });
+export function saveApiConfig(baseUrl: string, apiKey: string, model: string, openrouterKey: string) {
+  return invokeCommand<RuntimeStatus>('save_api_config', { baseUrl, apiKey, model, openrouterKey });
 }
 
 export function getAgentCatalog() {
@@ -58,6 +58,20 @@ export function togglePinWorkspace(requestId: string) {
   return invokeCommand<WorkspaceHistoryBundle>('toggle_pin_workspace', { requestId });
 }
 
-export function runWorkspaceFlow(requestId: string) {
-  return invokeCommand<WorkspaceView>('run_workspace_flow', { requestId });
+export function runWorkspaceFlow(requestId: string, targetTaskId?: string) {
+  return invokeCommand<WorkspaceView>('run_workspace_flow', { requestId, targetTaskId });
+}
+
+export interface LogPayload {
+  level: string;
+  message: string;
+  timestamp: string;
+}
+
+export async function subscribeToLogs(callback: (log: LogPayload) => void) {
+  ensureTauriRuntime();
+  const { listen } = await import('@tauri-apps/api/event');
+  return listen<LogPayload>('backend-log', (event) => {
+    callback(event.payload);
+  });
 }

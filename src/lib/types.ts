@@ -13,6 +13,7 @@ export interface RuntimeStatus {
   baseUrl: string;
   model: string;
   apiKey?: string | null;
+  openrouterKey?: string | null;
   readyMessage: string;
 }
 
@@ -20,6 +21,7 @@ export interface ApiConfig {
   baseUrl?: string;
   apiKey?: string;
   model?: string;
+  openrouterKey?: string;
 }
 
 export interface AgentAssignment {
