@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ReactFlow,
@@ -46,7 +46,7 @@ import {
   Pin,
   Pencil,
 } from 'lucide-react';
-import { clearWorkspaceView, deleteWorkspace, generateWorkspaceView, getRuntimeStatus, loadWorkspaceHistory, renameWorkspace, switchWorkspace, togglePinWorkspace } from './lib/api';
+import { clearWorkspaceView, deleteWorkspace, generateWorkspaceView, getRuntimeStatus, loadWorkspaceHistory, renameWorkspace, runWorkspaceFlow, switchWorkspace, togglePinWorkspace } from './lib/api';
 import type {
   DashboardTask,
   RuntimeStatus,
@@ -120,6 +120,15 @@ function agentIcon(agentId?: string) {
     case 'finance': return <BadgeCheck className="w-4 h-4" />;
     default: return <Hexagon className="w-4 h-4 fill-current" />;
   }
+}
+
+function findPreferredNodeId(workflow: WorkflowPayload | null) {
+  if (!workflow) return '';
+  const activeNode = workflow.nodes.find((node) => node.status === 'in-progress');
+  if (activeNode) return activeNode.id;
+  const doneNode = [...workflow.nodes].reverse().find((node) => node.status === 'done');
+  if (doneNode) return doneNode.id;
+  return workflow.selectedNodeId ?? '';
 }
 
 function buildReactFlowPayload(payload: WorkflowPayload) {
@@ -210,8 +219,8 @@ function TopNav({ runtime, activeScenario, hasWorkspace, onClear }: { runtime: R
   return <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ duration: 0.4 }} className="h-[88px] px-8 flex items-center justify-between shrink-0 bg-[#F5F6FA]"><div><h2 className="text-2xl font-bold text-slate-900">工作台</h2><p className="text-sm text-slate-500 mt-1">当前项目：{activeScenario}</p></div><div className="flex items-center gap-3">{hasWorkspace && <button onClick={onClear} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"><RefreshCcw className="w-3.5 h-3.5" />清空工作区</button>}<div className={`px-3 py-1.5 rounded-full text-xs font-medium ${runtime?.configured ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{runtime?.configured ? `已连接 ${runtime.model}` : '未连接 API'}</div></div></motion.div>;
 }
 
-function BoardHeader({ view, setView, onOpenWizard, canRunFlow }: { view: 'kanban' | 'workflow'; setView: (v: 'kanban' | 'workflow') => void; onOpenWizard: () => void; canRunFlow: boolean }) {
-  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }} className="px-8 py-4 flex items-center justify-between shrink-0 bg-white border-b border-slate-200 z-10 relative"><div className="flex items-center gap-6 w-full max-w-md"><button onClick={() => setView('kanban')} className={`py-2 text-sm font-semibold flex items-center gap-2 transition-colors relative ${view === 'kanban' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid className="w-4 h-4" /> 看板视图{view === 'kanban' && <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-0.5 bg-slate-900" />}</button><button onClick={() => setView('workflow')} className={`py-2 text-sm font-semibold flex items-center gap-2 transition-colors relative ${view === 'workflow' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}><Workflow className="w-4 h-4" /> 流程视图{view === 'workflow' && <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-0.5 bg-slate-900" />}</button></div><div className="flex items-center gap-4">{view === 'workflow' ? <><div className="flex items-center gap-2 mr-4"><span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md ${canRunFlow ? 'text-green-600 bg-green-50' : 'text-slate-500 bg-slate-100'}`}><Check className="w-3 h-3" /> {canRunFlow ? '已保存' : '等待生成'}</span></div><button disabled={!canRunFlow} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"><Play className="w-4 h-4" /> 运行流程</button></> : <button onClick={onOpenWizard} className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-sm border border-slate-800"><Sparkles className="w-4 h-4" /> AI 构建流程</button>}</div></motion.div>;
+function BoardHeader({ view, setView, onOpenWizard, canRunFlow, hasCompletedFlow, isRunningFlow, onRunFlow }: { view: 'kanban' | 'workflow'; setView: (v: 'kanban' | 'workflow') => void; onOpenWizard: () => void; canRunFlow: boolean; hasCompletedFlow: boolean; isRunningFlow: boolean; onRunFlow: () => void }) {
+  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.2 }} className="px-8 py-4 flex items-center justify-between shrink-0 bg-white border-b border-slate-200 z-10 relative"><div className="flex items-center gap-6 w-full max-w-md"><button onClick={() => setView('kanban')} className={`py-2 text-sm font-semibold flex items-center gap-2 transition-colors relative ${view === 'kanban' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}><LayoutGrid className="w-4 h-4" /> 看板视图{view === 'kanban' && <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-0.5 bg-slate-900" />}</button><button onClick={() => setView('workflow')} className={`py-2 text-sm font-semibold flex items-center gap-2 transition-colors relative ${view === 'workflow' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}><Workflow className="w-4 h-4" /> 流程视图{view === 'workflow' && <motion.div layoutId="activeTab" className="absolute -bottom-4 left-0 right-0 h-0.5 bg-slate-900" />}</button></div><div className="flex items-center gap-4">{view === 'workflow' ? <><div className="flex items-center gap-2 mr-4"><span className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md ${canRunFlow ? 'text-green-600 bg-green-50' : 'text-slate-500 bg-slate-100'}`}><Check className="w-3 h-3" /> {hasCompletedFlow ? '执行完成' : canRunFlow ? '已保存' : '等待生成'}</span></div><button onClick={onRunFlow} disabled={!canRunFlow || isRunningFlow || hasCompletedFlow} className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">{isRunningFlow ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} {isRunningFlow ? '执行中...' : '运行流程'}</button></> : <button onClick={onOpenWizard} className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-sm border border-slate-800"><Sparkles className="w-4 h-4" /> AI 构建流程</button>}</div></motion.div>;
 }
 
 function TaskCard({ task, index }: { task: DashboardTask; index: number }) {
@@ -231,8 +240,8 @@ function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload | null;
   const reactFlowPayload = useMemo(() => buildReactFlowPayload(workflow ?? { selectedNodeId: '', nodes: [], edges: [], inspectors: {} }), [workflow]);
   const [nodes, setNodes, onNodesChange] = useNodesState(reactFlowPayload.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(reactFlowPayload.edges);
-  const [selectedNodeId, setSelectedNodeId] = useState(workflow?.selectedNodeId ?? '');
-  useEffect(() => { setNodes(reactFlowPayload.nodes); setEdges(reactFlowPayload.edges); setSelectedNodeId(workflow?.selectedNodeId ?? ''); }, [reactFlowPayload, workflow, setEdges, setNodes]);
+  const [selectedNodeId, setSelectedNodeId] = useState(findPreferredNodeId(workflow));
+  useEffect(() => { setNodes(reactFlowPayload.nodes); setEdges(reactFlowPayload.edges); setSelectedNodeId(findPreferredNodeId(workflow)); }, [reactFlowPayload, workflow, setEdges, setNodes]);
   const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } } as Edge, eds)), [setEdges]);
   const inspector = (workflow?.inspectors ?? {})[selectedNodeId] ?? { title: '等待流程生成', agentName: '店长 Agent', status: '当前还没有真实流程节点', statusSubtitle: '请先通过 AI 构建流程生成真实任务。', statusTone: 'todo' as const, inputs: [{ label: '状态', value: '未生成' }, { label: '说明', value: '当前页面不展示任何默认流程 mock。' }], tools: [{ label: 'Agent 调度', progress: 0, active: false }, { label: '任务编排', progress: 0, active: false }] };
   return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="flex-1 w-full h-full relative bg-[#fafafa]"><ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={(_, node) => setSelectedNodeId(node.id)} nodeTypes={nodeTypes} fitView attributionPosition="bottom-right"><Background color="#e2e8f0" gap={16} size={1} /><Controls className="bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden" /><MiniMap nodeColor={(node) => node.type === 'triggerNode' ? '#c084fc' : node.type === 'conditionNode' ? '#fdba74' : '#94a3b8'} maskColor="rgba(248, 250, 252, 0.7)" className="bg-white border border-slate-200 shadow-sm rounded-xl" /></ReactFlow>{!hasPlan && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-white/95 backdrop-blur rounded-2xl border border-slate-200 px-6 py-4 shadow-sm text-sm text-slate-500">暂无真实流程，先通过 AI 构建流程生成任务。</div></div>}<div className="absolute top-4 right-4 w-80 bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col h-[calc(100%-2rem)] z-10 overflow-hidden"><div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"><div className="flex items-center gap-2"><div className={`w-8 h-8 rounded-lg flex items-center justify-center ${inspector.statusTone === 'done' ? 'bg-green-100 text-green-600' : inspector.statusTone === 'in-progress' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}><ImageIcon className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-slate-900">{inspector.title}</h3><p className="text-xs text-slate-500">{inspector.agentName}</p></div></div></div><div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6"><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">执行状态</label><div className={`${inspector.statusTone === 'done' ? 'bg-green-50 border-green-200' : inspector.statusTone === 'in-progress' ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'} border rounded-lg p-3 flex items-center gap-3`}>{inspector.statusTone === 'done' ? <Check className="w-5 h-5 text-green-500" /> : inspector.statusTone === 'in-progress' ? <Loader2 className="w-5 h-5 text-orange-500 animate-spin" /> : <ShieldAlert className="w-5 h-5 text-slate-400" />}<div><p className={`text-sm font-semibold ${inspector.statusTone === 'done' ? 'text-green-700' : inspector.statusTone === 'in-progress' ? 'text-orange-700' : 'text-slate-700'}`}>{inspector.status}</p><p className={`text-xs ${inspector.statusTone === 'done' ? 'text-green-600/80' : inspector.statusTone === 'in-progress' ? 'text-orange-600/80' : 'text-slate-500'}`}>{inspector.statusSubtitle}</p></div></div></div><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">输入参数</label><div className="space-y-2">{inspector.inputs.map((item) => <div key={item.label} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5"><span className="text-xs text-slate-500 block mb-1">{item.label}</span><span className="text-sm font-medium text-slate-900">{item.value}</span></div>)}</div></div><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">AI 技能调用</label><div className="border border-slate-200 rounded-lg overflow-hidden">{inspector.tools.map((tool, index) => <div key={tool.label} className={`p-3 flex items-center justify-between ${index < inspector.tools.length - 1 ? 'border-b border-slate-100' : ''} ${tool.active ? 'bg-slate-50' : 'bg-white'}`}><div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${tool.progress === 100 ? 'bg-green-500' : tool.active ? 'bg-orange-500 animate-pulse' : 'bg-slate-300'}`}></div><span className="text-sm font-medium text-slate-700">{tool.label}</span></div><span className="text-xs text-slate-400">{tool.progress}%</span></div>)}</div></div></div></div></motion.div>;
@@ -277,6 +286,7 @@ function WorkflowWizard({ onClose, onComplete, scenario, runtime, initialPrompt 
 function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setScenario, draftPrompt, setDraftPrompt }: { runtime: RuntimeStatus | null; historyBundle: WorkspaceHistoryBundle; setHistoryBundle: React.Dispatch<React.SetStateAction<WorkspaceHistoryBundle>>; scenario: string; setScenario: (scenario: string) => void; draftPrompt: string; setDraftPrompt: (prompt: string) => void }) {
   const [view, setView] = useState<'kanban' | 'workflow'>('kanban');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isRunningFlow, setIsRunningFlow] = useState(false);
   const [activeMenu, setActiveMenu] = useState<MenuKey>(scenarioToMenu(scenario));
 
   useEffect(() => { if (activeMenu !== 'overview') setScenario(menuToScenario(activeMenu)); }, [activeMenu, setScenario]);
@@ -286,6 +296,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
   const tasks = workspace?.tasks ?? [];
   const workflow = workspace?.workflow ?? null;
   const activeScenario = activeMenu === 'overview' ? '总览' : menuToScenario(activeMenu);
+  const hasCompletedFlow = tasks.length > 0 && tasks.every((task) => task.status === 'done');
 
   async function handleClear() {
     await clearWorkspaceView();
@@ -319,7 +330,19 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
     setHistoryBundle(nextBundle);
   }
 
-  return <><LightSidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} tasks={tasks} history={historyBundle.history} currentRequestId={workspace?.plan.requestId} onSwitchHistory={handleSwitchHistory} onDeleteHistory={handleDeleteHistory} onRenameHistory={handleRenameHistory} onTogglePinHistory={handleTogglePinHistory} /><div className="flex-1 flex flex-col h-full overflow-hidden bg-[#F5F6FA] relative"><TopNav runtime={runtime} activeScenario={activeScenario} hasWorkspace={Boolean(workspace)} onClear={handleClear} /><BoardHeader view={view} setView={setView} onOpenWizard={() => setIsWizardOpen(true)} canRunFlow={Boolean(workspace)} />{view === 'kanban' ? <KanbanBoard tasks={tasks} activeScenario={activeScenario} /> : <WorkflowView workflow={workflow} hasPlan={Boolean(workspace)} />}<AnimatePresence>{isWizardOpen && <WorkflowWizard scenario={scenario} runtime={runtime} initialPrompt={draftPrompt} onClose={() => setIsWizardOpen(false)} onComplete={(nextWorkspace) => { setHistoryBundle((prev) => ({ currentWorkspace: nextWorkspace, history: sortHistoryItems([{ requestId: nextWorkspace.plan.requestId, scenario: nextWorkspace.plan.scenario, summary: nextWorkspace.plan.summary, merchantIntent: nextWorkspace.plan.merchantIntent, generatedAt: nextWorkspace.plan.generatedAt, title: null, pinned: false }, ...prev.history.filter((item) => item.requestId !== nextWorkspace.plan.requestId)]) })); setDraftPrompt(nextWorkspace.plan.merchantIntent); setIsWizardOpen(false); setView('workflow'); }} />}</AnimatePresence></div></>;
+  async function handleRunFlow() {
+    if (!workspace) return;
+    setIsRunningFlow(true);
+    try {
+      const nextWorkspace = await runWorkspaceFlow(workspace.plan.requestId);
+      setHistoryBundle((prev) => ({ ...prev, currentWorkspace: nextWorkspace }));
+      setView('workflow');
+    } finally {
+      setIsRunningFlow(false);
+    }
+  }
+
+  return <><LightSidebar activeMenu={activeMenu} setActiveMenu={setActiveMenu} tasks={tasks} history={historyBundle.history} currentRequestId={workspace?.plan.requestId} onSwitchHistory={handleSwitchHistory} onDeleteHistory={handleDeleteHistory} onRenameHistory={handleRenameHistory} onTogglePinHistory={handleTogglePinHistory} /><div className="flex-1 flex flex-col h-full overflow-hidden bg-[#F5F6FA] relative"><TopNav runtime={runtime} activeScenario={activeScenario} hasWorkspace={Boolean(workspace)} onClear={handleClear} /><BoardHeader view={view} setView={setView} onOpenWizard={() => setIsWizardOpen(true)} canRunFlow={Boolean(workspace)} hasCompletedFlow={hasCompletedFlow} isRunningFlow={isRunningFlow} onRunFlow={handleRunFlow} />{view === 'kanban' ? <KanbanBoard tasks={tasks} activeScenario={activeScenario} /> : <WorkflowView workflow={workflow} hasPlan={Boolean(workspace)} />}<AnimatePresence>{isWizardOpen && <WorkflowWizard scenario={scenario} runtime={runtime} initialPrompt={draftPrompt} onClose={() => setIsWizardOpen(false)} onComplete={(nextWorkspace) => { setHistoryBundle((prev) => ({ currentWorkspace: nextWorkspace, history: sortHistoryItems([{ requestId: nextWorkspace.plan.requestId, scenario: nextWorkspace.plan.scenario, summary: nextWorkspace.plan.summary, merchantIntent: nextWorkspace.plan.merchantIntent, generatedAt: nextWorkspace.plan.generatedAt, title: null, pinned: false }, ...prev.history.filter((item) => item.requestId !== nextWorkspace.plan.requestId)]) })); setDraftPrompt(nextWorkspace.plan.merchantIntent); setIsWizardOpen(false); setView('workflow'); }} />}</AnimatePresence></div></>;
 }
 
 export default function App() {

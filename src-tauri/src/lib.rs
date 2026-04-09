@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, env, fs, path::PathBuf};
+﻿use std::{collections::BTreeMap, env, fs, path::PathBuf};
 
 use chrono::Utc;
 use dotenvy::dotenv;
@@ -48,6 +48,8 @@ pub struct WorkflowStage {
     goal: String,
     action: String,
     status: String,
+    #[serde(default)]
+    output: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -142,6 +144,7 @@ pub struct WorkflowInspector {
     status_subtitle: String,
     status_tone: String,
     inputs: Vec<InspectorInput>,
+    outputs: Vec<InspectorInput>,
     tools: Vec<InspectorTool>,
 }
 
@@ -567,6 +570,27 @@ fn build_tasks(plan: &OperationPlan) -> Vec<DashboardTask> {
     }).collect()
 }
 
+fn build_stage_output(stage: &WorkflowStage, plan: &OperationPlan) -> String {
+    let owner = normalize_agent_id(&stage.owner);
+    match owner.as_str() {
+        "designer" => format!("???????????????????????{}???????? Banner ????????", plan.summary),
+        "copywriter" => format!("???????????{}??????????????????????????", plan.merchant_intent),
+        "operator" => format!("????????????????????????????????????{}??", stage.goal),
+        "service" => format!("?????????????{}????????????????????", stage.goal),
+        "finance" => format!("???????????????????????????????????????"),
+        "warehouse" => format!("??????????????????????????????{}???????", stage.goal),
+        _ => format!("?????????????{}?????????????????????????", stage.name),
+    }
+}
+
+fn stage_outputs(stage: &WorkflowStage) -> Vec<InspectorInput> {
+    stage
+        .output
+        .as_ref()
+        .map(|output| vec![InspectorInput { label: "????".into(), value: output.clone() }])
+        .unwrap_or_default()
+}
+
 fn build_workflow(plan: &OperationPlan) -> WorkflowPayload {
     let mut nodes = vec![WorkflowNodeItem { id: "trigger".into(), kind: "trigger".into(), title: plan.scenario.clone(), subtitle: None, description: Some(plan.summary.clone()), agent_id: None, status: None, x: 20, y: 220 }];
     let mut edges = Vec::new();
@@ -590,16 +614,18 @@ fn build_workflow(plan: &OperationPlan) -> WorkflowPayload {
             status_subtitle: if stage.status == "done" { "本阶段结果已回写到工作台".into() } else if stage.status == "active" { format!("当前目标：{}", stage.goal) } else { format!("执行目标：{}", stage.goal) },
             status_tone: status_to_task_status(&stage.status).into(),
             inputs: vec![InspectorInput { label: "阶段目标".into(), value: stage.goal.clone() }, InspectorInput { label: "负责人".into(), value: agent_name(&agent_id).into() }, InspectorInput { label: "商家诉求".into(), value: plan.merchant_intent.clone() }],
+            outputs: stage_outputs(stage),
             tools: vec![InspectorTool { label: "任务拆解".into(), progress: if stage.status == "done" { 100 } else if stage.status == "active" { 72 } else { 0 }, active: stage.status == "active" }, InspectorTool { label: "结果回填".into(), progress: if stage.status == "done" { 100 } else if stage.status == "active" { 45 } else { 0 }, active: false }],
         });
         previous_id = node_id;
     }
 
     if !plan.risks.is_empty() {
+        let plan_completed = is_plan_completed(plan);
         let condition_id = "risk-guard".to_string();
-        nodes.push(WorkflowNodeItem { id: condition_id.clone(), kind: "condition".into(), title: "风险校验".into(), subtitle: Some("店长 Agent".into()), description: Some("核查执行风险、库存、利润与售后依赖项".into()), agent_id: Some("manager".into()), status: Some("in-progress".into()), x: 230 + (plan.workflow_stages.len() as i32) * 280, y: 240 });
+        nodes.push(WorkflowNodeItem { id: condition_id.clone(), kind: "condition".into(), title: "风险校验".into(), subtitle: Some("店长 Agent".into()), description: Some("核查执行风险、库存、利润与售后依赖项".into()), agent_id: Some("manager".into()), status: Some(if plan_completed { "done" } else { "in-progress" }.into()), x: 230 + (plan.workflow_stages.len() as i32) * 280, y: 240 });
         edges.push(WorkflowEdgeItem { id: format!("edge-{}-{}", previous_id, condition_id), source: previous_id, target: condition_id.clone(), source_handle: None, label: None, animated: true, stroke: "#f97316".into() });
-        inspectors.insert(condition_id.clone(), WorkflowInspector { title: "风险校验".into(), agent_name: "店长 Agent".into(), status: "正在检查高风险项".into(), status_subtitle: format!("{} 条风险待关注", plan.risks.len()), status_tone: "in-progress".into(), inputs: plan.risks.iter().take(3).enumerate().map(|(index, risk)| InspectorInput { label: format!("风险 {}", index + 1), value: risk.clone() }).collect(), tools: vec![InspectorTool { label: "策略审查".into(), progress: 80, active: true }, InspectorTool { label: "执行确认".into(), progress: 30, active: false }] });
+        inspectors.insert(condition_id.clone(), WorkflowInspector { title: "风险校验".into(), agent_name: "店长 Agent".into(), status: if plan_completed { "高风险项已完成复核".into() } else { "正在检查高风险项".into() }, status_subtitle: if plan_completed { format!("{} 条风险已纳入执行结果复盘", plan.risks.len()) } else { format!("{} 条风险待关注", plan.risks.len()) }, status_tone: if plan_completed { "done".into() } else { "in-progress".into() }, inputs: plan.risks.iter().take(3).enumerate().map(|(index, risk)| InspectorInput { label: format!("风险 {}", index + 1), value: risk.clone() }).collect(), outputs: if plan_completed { vec![InspectorInput { label: "复核结论".into(), value: "关键风险已回写到执行复盘，可继续跟踪库存、利润和售后反馈。".into() }] } else { Vec::new() }, tools: vec![InspectorTool { label: "策略审查".into(), progress: if plan_completed { 100 } else { 80 }, active: !plan_completed }, InspectorTool { label: "执行确认".into(), progress: if plan_completed { 100 } else { 30 }, active: false }] });
     }
 
     WorkflowPayload { selected_node_id, nodes, edges, inspectors }
@@ -607,6 +633,167 @@ fn build_workflow(plan: &OperationPlan) -> WorkflowPayload {
 
 fn build_wizard(prompt: &str, plan: &OperationPlan) -> WizardPayload {
     WizardPayload { prompt: prompt.into(), scenario: plan.scenario.clone(), breakdown: plan.workflow_stages.iter().take(3).map(|stage| stage.goal.clone()).collect(), team_agent_ids: plan.agent_assignments.iter().take(4).map(|assignment| normalize_agent_id(&assignment.agent_id)).collect(), team_objectives: plan.agent_assignments.iter().take(4).map(|assignment| WizardTeamObjective { agent_id: normalize_agent_id(&assignment.agent_id), agent_name: assignment.agent_name.clone(), objective: assignment.objective.clone() }).collect(), ready_summary: plan.summary.clone() }
+}
+
+fn is_plan_completed(plan: &OperationPlan) -> bool {
+    !plan.workflow_stages.is_empty() && plan.workflow_stages.iter().all(|stage| stage.status == "done")
+}
+
+fn build_execution_daily_brief(plan: &OperationPlan) -> String {
+    let completed_stage_count = plan.workflow_stages.iter().filter(|stage| stage.status == "done").count();
+    let total_stage_count = plan.workflow_stages.len();
+    let completed_agents = plan
+        .agent_assignments
+        .iter()
+        .filter(|assignment| assignment.status == "done")
+        .map(|assignment| assignment.agent_name.clone())
+        .collect::<Vec<_>>();
+    let active_agent = plan
+        .agent_assignments
+        .iter()
+        .find(|assignment| assignment.status == "active")
+        .map(|assignment| assignment.agent_name.clone());
+    let completed_checklist = plan.execution_checklist.iter().filter(|item| item.done).count();
+    let risk_summary = if plan.risks.is_empty() {
+        "当前未识别出新增高风险项。".to_string()
+    } else if is_plan_completed(plan) {
+        format!("{} 项风险已完成复核，可继续结合售后与库存表现复盘。", plan.risks.len())
+    } else {
+        format!("仍有 {} 项风险需在后续阶段持续关注。", plan.risks.len())
+    };
+
+    if total_stage_count == 0 {
+        return format!("当前流程尚未拆出可执行阶段。{}", risk_summary);
+    }
+
+    if is_plan_completed(plan) {
+        let completed_agents_text = if completed_agents.is_empty() {
+            "全部 Agent".to_string()
+        } else {
+            completed_agents.join("、")
+        };
+
+        return format!(
+            "店长已完成本轮流程调度，{} 已全部交付；阶段进度 {}/{}，执行清单完成 {} 项。{}",
+            completed_agents_text,
+            completed_stage_count,
+            total_stage_count,
+            completed_checklist,
+            risk_summary
+        );
+    }
+
+    let active_agent_text = active_agent.unwrap_or_else(|| "店长".to_string());
+    format!(
+        "店长正在推进第 {}/{} 个阶段，当前由 {} 接手执行；已完成清单 {} 项。{}",
+        completed_stage_count + 1,
+        total_stage_count,
+        active_agent_text,
+        completed_checklist,
+        risk_summary
+    )
+}
+
+fn execute_workspace_flow_record(app: &tauri::AppHandle, request_id: &str) -> Result<WorkspaceView, ApiError> {
+    let workspace = read_workspace_by_id(app, request_id)?;
+
+    if is_plan_completed(&workspace.plan) {
+        save_workspace_view(app, &workspace)?;
+        return Ok(workspace);
+    }
+
+    let mut plan = workspace.plan.clone();
+
+    let active_index = plan.workflow_stages.iter().position(|stage| stage.status == "active");
+    let target_index = active_index.or_else(|| {
+        plan.workflow_stages
+            .iter()
+            .position(|stage| stage.status != "done")
+    });
+
+    if let Some(index) = target_index {
+        let completed_stage_name = plan.workflow_stages[index].name.clone();
+        plan.workflow_stages[index].status = "done".into();
+        let stage_output = build_stage_output(&plan.workflow_stages[index], &plan);
+        plan.workflow_stages[index].output = Some(stage_output);
+
+        if let Some(next_index) = plan
+            .workflow_stages
+            .iter()
+            .enumerate()
+            .skip(index + 1)
+            .find(|(_, stage)| stage.status != "done")
+            .map(|(idx, _)| idx)
+        {
+            plan.workflow_stages[next_index].status = "active".into();
+        }
+
+        let plan_completed = is_plan_completed(&plan);
+
+        for assignment in &mut plan.agent_assignments {
+            let assignment_owner = normalize_agent_id(&assignment.agent_id);
+            let owned_stages = plan
+                .workflow_stages
+                .iter()
+                .filter(|stage| normalize_agent_id(&stage.owner) == assignment_owner)
+                .collect::<Vec<_>>();
+
+            assignment.status = if owned_stages.is_empty() {
+                assignment.status.clone()
+            } else if owned_stages.iter().all(|stage| stage.status == "done") {
+                "done".into()
+            } else if owned_stages.iter().any(|stage| stage.status == "active") {
+                "active".into()
+            } else if owned_stages.iter().any(|stage| stage.status == "done") {
+                "active".into()
+            } else {
+                "pending".into()
+            };
+        }
+
+        for item in &mut plan.execution_checklist {
+            let item_owner = normalize_agent_id(&item.owner);
+            let owned_stages = plan
+                .workflow_stages
+                .iter()
+                .filter(|stage| normalize_agent_id(&stage.owner) == item_owner)
+                .collect::<Vec<_>>();
+            if !owned_stages.is_empty() {
+                item.done = owned_stages.iter().all(|stage| stage.status == "done");
+            }
+        }
+
+        if plan_completed {
+            for assignment in &mut plan.agent_assignments {
+                if assignment.status != "done" {
+                    assignment.status = "done".into();
+                }
+            }
+            for item in &mut plan.execution_checklist {
+                item.done = true;
+            }
+            plan.manager_decision = format!(
+                "{}
+执行结果：店长已完成全部阶段调度，团队协作已全部落地。",
+                plan.manager_decision.trim()
+            );
+        } else if let Some(next_stage) = plan.workflow_stages.iter().find(|stage| stage.status == "active") {
+            plan.manager_decision = format!(
+                "{}
+最新进度：已完成“{}”，下一步由{}继续推进“{}”。",
+                plan.manager_decision.trim(),
+                completed_stage_name,
+                agent_name(&normalize_agent_id(&next_stage.owner)),
+                next_stage.name
+            );
+        }
+    }
+
+    plan.daily_brief = build_execution_daily_brief(&plan);
+
+    let next_workspace = build_workspace_view(plan.merchant_intent.clone(), plan);
+    save_workspace_view(app, &next_workspace)?;
+    Ok(next_workspace)
 }
 
 fn build_workspace_view(prompt: String, plan: OperationPlan) -> WorkspaceView {
@@ -665,6 +852,11 @@ fn toggle_pin_workspace(app: tauri::AppHandle, request_id: String) -> Result<Wor
     toggle_pin_workspace_record(&app, &request_id)
 }
 
+#[tauri::command]
+fn run_workspace_flow(app: tauri::AppHandle, request_id: String) -> Result<WorkspaceView, ApiError> {
+    execute_workspace_flow_record(&app, &request_id)
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
@@ -673,7 +865,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_agent_catalog, get_runtime_status, generate_workspace_view, load_workspace_history, switch_workspace, clear_workspace_view, delete_workspace, rename_workspace, toggle_pin_workspace])
+        .invoke_handler(tauri::generate_handler![get_agent_catalog, get_runtime_status, generate_workspace_view, load_workspace_history, switch_workspace, clear_workspace_view, delete_workspace, rename_workspace, toggle_pin_workspace, run_workspace_flow])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

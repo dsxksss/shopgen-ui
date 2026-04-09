@@ -53,3 +53,7 @@ export function renameWorkspace(requestId: string, title: string) {
 export function togglePinWorkspace(requestId: string) {
   return invokeCommand<WorkspaceHistoryBundle>('toggle_pin_workspace', { requestId });
 }
+
+export function runWorkspaceFlow(requestId: string) {
+  return invokeCommand<WorkspaceView>('run_workspace_flow', { requestId });
+}

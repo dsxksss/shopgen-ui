@@ -29,6 +29,7 @@ export interface WorkflowStage {
   goal: string;
   action: string;
   status: 'pending' | 'active' | 'blocked' | 'done';
+  output?: string;
 }
 
 export interface ChecklistItem {
@@ -107,6 +108,7 @@ export interface WorkflowInspector {
   statusSubtitle: string;
   statusTone: 'todo' | 'in-progress' | 'done';
   inputs: InspectorInput[];
+  outputs: InspectorInput[];
   tools: InspectorTool[];
 }
 
