@@ -100,7 +100,12 @@ pub fn load_workspace_history(app: tauri::AppHandle) -> Result<WorkspaceHistoryB
 
 #[tauri::command]
 pub fn switch_workspace(app: tauri::AppHandle, request_id: String) -> Result<WorkspaceView, ApiError> {
-    switch_workspace_record(&app, &request_id)
+    crate::emit_log(&app, "info", &format!("正在切换至工作区: {}", request_id));
+    let result = switch_workspace_record(&app, &request_id);
+    if result.is_ok() {
+        crate::emit_log(&app, "success", "工作区切换成功");
+    }
+    result
 }
 
 #[tauri::command]
@@ -110,6 +115,7 @@ pub fn clear_workspace_view(app: tauri::AppHandle) -> Result<(), ApiError> {
 
 #[tauri::command]
 pub fn delete_workspace(app: tauri::AppHandle, request_id: String) -> Result<(), ApiError> {
+    crate::emit_log(&app, "warn", &format!("正在删除工作区记录: {}", request_id));
     delete_workspace_record(&app, &request_id)
 }
 
@@ -119,6 +125,7 @@ pub fn rename_workspace(
     request_id: String,
     title: String,
 ) -> Result<WorkspaceHistoryBundle, ApiError> {
+    crate::emit_log(&app, "info", &format!("重命名工作区 {} 为: {}", request_id, title));
     rename_workspace_record(&app, &request_id, &title)
 }
 

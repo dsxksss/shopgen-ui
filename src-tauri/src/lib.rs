@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tauri::Manager;
+use tauri::{Manager, Emitter};
 use thiserror::Error;
 
 pub mod commands;

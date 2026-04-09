@@ -1,11 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { AnimatePresence } from 'motion/react';
+import { Terminal } from 'lucide-react';
 import { clearWorkspaceView, deleteWorkspace, getRuntimeStatus, loadWorkspaceHistory, renameWorkspace, runWorkspaceFlow, switchWorkspace, togglePinWorkspace } from './lib/api';
 import type { RuntimeStatus, WorkspaceHistoryBundle } from './lib/types';
 import { DEFAULT_PROMPTS, MenuKey, scenarioToMenu, menuToScenario, sortHistoryItems } from './lib/utils';
 import { KanbanBoard } from './components/Kanban';
 import { WorkflowView, WorkflowWizard } from './components/Workflow';
-import { DebugPanel } from './components/DebugPanel';
 import { DarkSidebar, LightSidebar, TopNav, BoardHeader, SettingsModal } from './components/Layout';
 import '@xyflow/react/dist/style.css';
 
@@ -165,6 +165,16 @@ export default function App() {
             setScenario(bundle.currentWorkspace.plan.scenario);
             setDraftPrompt(bundle.currentWorkspace.plan.merchantIntent);
           }
+          // 发送初始化成功日志
+          import('./lib/api').then(({ subscribeToLogs }) => {
+            // 这里我们不需要subscribe，只是为了演示，实际上emit_log是在Rust里调用的
+            // 我们可以在这里调用一个Rust的ping方法（如果实现了）
+            import('@tauri-apps/api/core').then(({ invoke }) => {
+              invoke('get_runtime_status').then(() => {
+                // 这个已经调用过了，我们只需要在Debug里显示
+              });
+            });
+          });
         }
       } catch (error) {
         if (!cancelled) {
@@ -180,7 +190,29 @@ export default function App() {
     <div className="flex h-screen w-full bg-[#F5F6FA] text-slate-800 font-sans overflow-hidden">
       <DarkSidebar onOpenSettings={() => setIsSettingsOpen(true)} />
       <MainContent runtime={runtime} historyBundle={historyBundle} setHistoryBundle={setHistoryBundle} scenario={scenario} setScenario={setScenario} draftPrompt={draftPrompt} setDraftPrompt={setDraftPrompt} />
-      <DebugPanel />
+      <button
+        onClick={async () => {
+          const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+          const webview = new WebviewWindow('debug-panel', {
+            url: '/?window=debug',
+            title: 'ShopGen Backend Session',
+            width: 800,
+            height: 600,
+            resizable: true,
+            center: true
+          });
+          webview.once('tauri://error', (e) => {
+            console.error('Window open error', e);
+            // Ignore error if window already exists, just focus it
+          });
+        }}
+        className="fixed bottom-6 right-6 z-40 bg-slate-900 text-slate-100 p-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 group border border-slate-700"
+      >
+        <Terminal className="w-5 h-5" />
+        <span className="w-0 overflow-hidden group-hover:w-16 transition-all duration-300 text-sm font-medium whitespace-nowrap">
+          调试终端
+        </span>
+      </button>
       <AnimatePresence>
         {isSettingsOpen && <SettingsModal runtime={runtime} onClose={() => setIsSettingsOpen(false)} onSaved={(nextRuntime) => { setRuntime(nextRuntime); setIsSettingsOpen(false); }} />}
       </AnimatePresence>
