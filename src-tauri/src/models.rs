@@ -3,12 +3,27 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct Skill {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub icon: String,
+    #[serde(default)]
+    pub triggers: Vec<String>,
+    #[serde(default)]
+    pub content: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AgentProfile {
     pub id: String,
     pub name: String,
     pub title: String,
     pub summary: String,
     pub capabilities: Vec<String>,
+    #[serde(default)]
+    pub skills: Vec<Skill>,
     pub color: String,
 }
 
@@ -41,6 +56,8 @@ pub struct AgentAssignment {
     pub agent_name: String,
     pub objective: String,
     pub deliverable: String,
+    #[serde(default)]
+    pub skills_required: Vec<String>,
     pub status: String,
 }
 
@@ -99,6 +116,8 @@ pub struct DashboardTask {
     pub date_color: String,
     #[serde(default)]
     pub summary: String,
+    #[serde(default)]
+    pub skills: Vec<Skill>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

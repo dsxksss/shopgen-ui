@@ -1,9 +1,17 @@
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+}
+
 export interface AgentProfile {
   id: string;
   name: string;
   title: string;
   summary: string;
   capabilities: string[];
+  skills?: Skill[];
   color: string;
 }
 
@@ -76,6 +84,7 @@ export interface DashboardTask {
   progressColor: string;
   dateColor: string;
   summary: string;
+  skills?: Skill[];
 }
 
 export interface WorkflowNodeItem {

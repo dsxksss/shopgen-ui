@@ -5,42 +5,209 @@ import {
   Play,
   Loader2,
   ChevronRight,
+  Target,
+  UserPlus,
+  Palette,
+  Layout,
+  Search,
+  Edit3,
+  BarChart,
+  TrendingUp,
+  Smile,
+  MessageCircle,
+  Calculator,
+  DollarSign,
+  Package,
+  Truck,
+  Clock,
+  Activity,
+  CheckCircle2,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { DashboardTask } from '../lib/types';
+import type { DashboardTask, Skill } from '../lib/types';
 import { normalizeAgentId, AGENTS } from '../lib/utils';
 
-export function TaskCard({ task, index, onClick, onRun }: { task: DashboardTask; index: number; onClick?: () => void; onRun?: (e: React.MouseEvent) => void }) {
-  return <motion.div layout initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05, duration: 0.3 }} whileHover={{ y: -4, transition: { duration: 0.2 } }} onClick={onClick} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow cursor-pointer group relative overflow-hidden">
-    {task.status === 'in-progress' && <motion.div className="absolute top-0 left-0 w-full h-1 bg-orange-400" initial={{ x: '-100%' }} animate={{ x: '100%' }} transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }} />}
-    <div className="flex items-start justify-between mb-1">
-      <h4 className="font-semibold text-slate-900 text-[15px] leading-snug">{task.title}</h4>
-      {task.status !== 'done' && task.status !== 'in-progress' && onRun && (
-        <button onClick={onRun} className="p-1.5 rounded-lg bg-slate-50 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-green-500 hover:text-white transition-all shadow-sm" title="手动推进">
-          <Play className="w-3.5 h-3.5 fill-current" />
-        </button>
-      )}
-      {task.status === 'in-progress' && <div className="p-1.5 rounded-lg bg-orange-50 text-orange-500"><Loader2 className="w-3.5 h-3.5 animate-spin" /></div>}
+const SKILL_ICONS: Record<string, any> = {
+  plan: Target,
+  dispatch: UserPlus,
+  visual: Palette,
+  layout: Layout,
+  seo: Search,
+  sales: Edit3,
+  data: BarChart,
+  competitor: TrendingUp,
+  emotion: Smile,
+  reply: MessageCircle,
+  roi: Calculator,
+  margin: DollarSign,
+  stock: Package,
+  logistic: Truck,
+};
+
+function SkillBadge({ skill }: { skill: Skill }) {
+  const Icon = SKILL_ICONS[skill.id] || LayoutGrid;
+  return (
+    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-100 text-[10px] text-slate-500 font-medium whitespace-nowrap" title={skill.description}>
+      <Icon className="w-2.5 h-2.5 text-slate-400" />
+      {skill.name}
     </div>
-    <p className="text-xs text-slate-500 mb-4">{task.workflow}</p>
-    {task.summary && <div className="mb-4 bg-slate-50 p-2.5 rounded-lg border border-slate-100"><p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">{task.summary}</p></div>}
-    <div className="mb-4">
-      <div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-2"><span className="flex items-center gap-1.5"><LayoutGrid className="w-3.5 h-3.5" /> 进度</span><span>{task.progress}/{task.totalSteps}</span></div>
-      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden"><div className={`h-full rounded-full ${task.progressColor}`} style={{ width: `${(task.progress / task.totalSteps) * 100}%` }} /></div>
-    </div>
-    <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-      <div className={`px-2.5 py-1 rounded-md text-xs font-medium ${task.status === 'in-progress' ? '推进中...' : task.date}`}>{task.status === 'in-progress' ? '推进中...' : task.date}</div>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center -space-x-2">{task.agentIds.slice(0, 3).map((agentId, i) => { const agent = AGENTS[normalizeAgentId(agentId)]; return <div key={i} className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white ${agent.color} shadow-sm`} title={agent.name}>{agent.initial}</div>; })}{task.agentIds.length > 3 && <div className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 bg-slate-100 shadow-sm">+{task.agentIds.length - 3}</div>}</div>
-      </div>
-    </div>
-  </motion.div>;
+  );
 }
 
-export function Column({ title, count, tasks, emptyText, onSelectTask, onRunTask }: { title: string; count: number; tasks: DashboardTask[]; emptyText: string; onSelectTask: (id: string) => void; onRunTask?: (id: string) => void }) {
-  return <div className="flex flex-col w-[340px] shrink-0 h-full"><div className="flex items-center justify-between mb-4 px-1"><h3 className="text-sm font-medium text-slate-500">{title} ({count})</h3></div><div className="flex-1 overflow-y-auto flex flex-col gap-4 pb-4 pr-2 border-2 border-dashed border-slate-200 rounded-2xl p-2 bg-slate-50/50">{tasks.map((task, index) => <React.Fragment key={task.id}><TaskCard task={task} index={index} onClick={() => onSelectTask(task.id)} onRun={(e) => { e.stopPropagation(); onRunTask?.(task.id); }} /></React.Fragment>)}{tasks.length === 0 && <div className="h-24 flex items-center justify-center text-sm text-slate-400 font-medium">{emptyText}</div>}</div></div>;
+export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: DashboardTask; index: number; onClick?: () => void; onRun?: (e: React.MouseEvent) => void; isRunning?: boolean }) {
+  const isExecuting = task.status === 'in-progress' || isRunning;
+  
+  return (
+    <motion.div 
+      layout 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      transition={{ delay: index * 0.05, duration: 0.3 }} 
+      whileHover={{ y: -4, transition: { duration: 0.2 } }} 
+      onClick={onClick} 
+      className={`bg-white p-5 rounded-2xl shadow-sm border ${isExecuting ? 'border-orange-200' : 'border-slate-100'} hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group relative overflow-hidden`}
+    >
+      {isExecuting && (
+        <motion.div 
+          className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-amber-400" 
+          initial={{ x: '-100%' }} 
+          animate={{ x: '100%' }} 
+          transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }} 
+        />
+      )}
+      
+      <div className="flex items-start justify-between mb-2">
+        <h4 className="font-bold text-slate-800 text-[15px] leading-snug group-hover:text-blue-600 transition-colors">
+          {task.title}
+        </h4>
+        <div className="flex items-center gap-1.5 ml-3 shrink-0">
+          {task.status !== 'done' && task.status !== 'in-progress' && !isRunning && onRun && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onRun(e); }} 
+              className="p-1.5 rounded-lg bg-slate-50 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-green-500 hover:text-white transition-all shadow-sm flex items-center justify-center" 
+              title="立即执行"
+            >
+              <Play className="w-3 h-3 fill-current" />
+            </button>
+          )}
+          {isExecuting && (
+            <div className="p-1.5 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            </div>
+          )}
+          {task.status === 'done' && (
+            <div className="p-1.5 rounded-lg bg-green-50 text-green-500 flex items-center justify-center">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <p className="text-[11px] font-medium text-slate-400 mb-4 tracking-wide uppercase">{task.workflow}</p>
+      
+      {task.summary && (
+        <div className="mb-4 bg-slate-50/80 p-3 rounded-xl border border-slate-100/50 backdrop-blur-sm">
+          <p className="text-[12px] text-slate-600 line-clamp-2 leading-relaxed italic">
+            {task.summary}
+          </p>
+        </div>
+      )}
+      
+      <div className="mb-5">
+        <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-tighter">
+          <span className="flex items-center gap-1.5">
+            <LayoutGrid className="w-3 h-3" /> 任务进度
+          </span>
+          <span className="text-slate-600">{task.progress}/{task.totalSteps}</span>
+        </div>
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${(task.progress / task.totalSteps) * 100}%` }}
+            className={`h-full rounded-full ${task.progressColor} shadow-inner transition-all duration-700`} 
+          />
+        </div>
+      </div>
+      
+      {task.skills && task.skills.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-5">
+          {task.skills.slice(0, 3).map((skill) => (
+            <SkillBadge key={skill.id} skill={skill} />
+          ))}
+          {task.skills.length > 3 && (
+            <span className="text-[10px] text-slate-400 font-bold self-center bg-slate-50 px-1.5 py-0.5 rounded">
+              +{task.skills.length - 3}
+            </span>
+          )}
+        </div>
+      )}
+      
+      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
+        <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${task.status === 'in-progress' ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-500'}`}>
+          {task.status === 'in-progress' ? '推进中...' : task.date}
+        </div>
+        
+        <div className="flex items-center -space-x-2.5">
+          {task.agentIds.slice(0, 4).map((agentId, i) => { 
+            const agent = AGENTS[normalizeAgentId(agentId)]; 
+            return (
+              <div 
+                key={i} 
+                className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm ring-1 ring-slate-100/50 ${agent.color}`} 
+                title={agent.name}
+              >
+                {agent.initial}
+              </div>
+            ); 
+          })}
+          {task.agentIds.length > 4 && (
+            <div className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 bg-slate-50 shadow-sm ring-1 ring-slate-100/50">
+              +{task.agentIds.length - 4}
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
 }
+
+interface ColumnProps {
+  title: string;
+  status: 'todo' | 'in-progress' | 'done';
+  tasks: DashboardTask[];
+  icon: React.ReactNode;
+  color: string;
+  onRunTask?: (id: string) => void;
+  runningTaskId?: string | null;
+  onSelectTask: (id: string) => void;
+}
+
+const Column: React.FC<ColumnProps> = ({ title, status, tasks, icon, color, onRunTask, runningTaskId, onSelectTask }) => {
+  return (
+    <div className="flex flex-col w-[340px] shrink-0 h-full">
+      <div className="flex items-center justify-between mb-4 px-1">
+        <h3 className="text-sm font-medium text-slate-500 flex items-center gap-2">
+          {icon} {title} ({tasks.length})
+        </h3>
+      </div>
+      <div className={`flex-1 overflow-y-auto flex flex-col gap-4 pb-4 pr-2 border-2 border-dashed border-slate-200 rounded-2xl p-2 ${color}`}>
+        {tasks.map((task, index) => (
+          <React.Fragment key={task.id}>
+            <TaskCard 
+              task={task} 
+              index={index} 
+              onClick={() => onSelectTask(task.id)} 
+              onRun={(e) => { e.stopPropagation(); onRunTask?.(task.id); }} 
+              isRunning={runningTaskId === task.id}
+            />
+          </React.Fragment>
+        ))}
+        {tasks.length === 0 && <div className="h-24 flex items-center justify-center text-sm text-slate-400 font-medium">暂无任务</div>}
+      </div>
+    </div>
+  );
+};
 
 export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onClose: () => void }) {
   return (
@@ -106,22 +273,54 @@ export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onCl
               })}
             </div>
           </div>
+          {task.skills && task.skills.length > 0 && (
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">调用技能 (Skills)</label>
+              <div className="flex flex-wrap gap-2">
+                {task.skills.map((skill) => (
+                  <div key={skill.id} className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl" title={skill.description}>
+                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100">
+                      {SKILL_ICONS[skill.id] ? React.createElement(SKILL_ICONS[skill.id], { className: "w-4 h-4 text-slate-500" }) : <LayoutGrid className="w-4 h-4 text-slate-500" />}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{skill.name}</p>
+                      <p className="text-[10px] text-slate-500 line-clamp-1">{skill.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
     </>
   );
 }
 
-export function KanbanBoard({ tasks, activeScenario, onRunTask }: { tasks: DashboardTask[]; activeScenario: string; onRunTask?: (id: string) => void }) {
+interface KanbanBoardProps {
+  tasks: DashboardTask[];
+  activeScenario: string;
+  onRunTask?: (id: string) => void;
+  runningTaskId?: string | null;
+}
+
+export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, activeScenario, onRunTask, runningTaskId }) => {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const scopedTasks = activeScenario === '总览' ? tasks : tasks.filter((task) => task.workflow === activeScenario);
   const selectedTask = scopedTasks.find(t => t.id === selectedTaskId);
-  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex-1 overflow-hidden px-8 pb-8 pt-4 flex gap-6 relative">
-    <Column title="待办" count={scopedTasks.filter((t) => t.status === 'todo').length} tasks={scopedTasks.filter((t) => t.status === 'todo')} emptyText="等待真实任务生成..." onSelectTask={setSelectedTaskId} onRunTask={onRunTask} />
-    <Column title="执行中" count={scopedTasks.filter((t) => t.status === 'in-progress').length} tasks={scopedTasks.filter((t) => t.status === 'in-progress')} emptyText="当前没有执行中的真实任务" onSelectTask={setSelectedTaskId} onRunTask={onRunTask} />
-    <Column title="已完成" count={scopedTasks.filter((t) => t.status === 'done').length} tasks={scopedTasks.filter((t) => t.status === 'done')} emptyText="完成任务后会显示在这里" onSelectTask={setSelectedTaskId} onRunTask={onRunTask} />
-    <AnimatePresence>
-      {selectedTask && <TaskDetailsDrawer task={selectedTask} onClose={() => setSelectedTaskId(null)} />}
-    </AnimatePresence>
-  </motion.div>;
-}
+  
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex-1 overflow-hidden px-8 pb-8 pt-4 flex flex-col relative">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
+        <div className="flex space-x-6 h-full min-w-max px-2">
+          <Column title="待执行" status="todo" tasks={scopedTasks.filter(t => t.status === 'todo')} icon={<Clock className="w-4 h-4" />} color="bg-slate-100/50" onRunTask={onRunTask} runningTaskId={runningTaskId} onSelectTask={setSelectedTaskId} />
+          <Column title="进行中" status="in-progress" tasks={scopedTasks.filter(t => t.status === 'in-progress')} icon={<Activity className="w-4 h-4" />} color="bg-blue-50/50" onRunTask={onRunTask} runningTaskId={runningTaskId} onSelectTask={setSelectedTaskId} />
+          <Column title="已完成" status="done" tasks={scopedTasks.filter(t => t.status === 'done')} icon={<CheckCircle2 className="w-4 h-4" />} color="bg-green-50/50" onRunTask={onRunTask} runningTaskId={runningTaskId} onSelectTask={setSelectedTaskId} />
+        </div>
+      </div>
+      <AnimatePresence>
+        {selectedTask && <TaskDetailsDrawer task={selectedTask} onClose={() => setSelectedTaskId(null)} />}
+      </AnimatePresence>
+    </motion.div>
+  );
+};

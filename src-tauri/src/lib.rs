@@ -7,6 +7,7 @@ pub mod llm_client;
 pub mod models;
 pub mod orchestrator;
 pub mod store;
+pub mod skills;
 
 #[derive(Debug, Error)]
 pub enum ApiError {
@@ -74,5 +75,6 @@ pub fn emit_log(app: &tauri::AppHandle, level: &str, message: &str) {
         message: message.into(),
         timestamp: chrono::Utc::now().to_rfc3339(),
     };
+    println!("[{}] {}: {}", payload.timestamp, level.to_uppercase(), message);
     app.emit("backend-log", payload).ok();
 }

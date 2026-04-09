@@ -14,6 +14,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
   const [view, setView] = useState<'kanban' | 'workflow'>('kanban');
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isRunningFlow, setIsRunningFlow] = useState(false);
+  const [runningTaskId, setRunningTaskId] = useState<string | null>(null);
   const [activeMenu, setActiveMenu] = useState<MenuKey>(scenarioToMenu(scenario));
 
   useEffect(() => {
@@ -81,6 +82,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
     if (!workspace) return;
     
     setIsRunningFlow(true);
+    setRunningTaskId(taskId);
     isAutoRunningRef.current = true;
     
     try {
@@ -88,6 +90,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
       setHistoryBundle((prev) => ({ ...prev, currentWorkspace: nextWorkspace }));
     } finally {
       setIsRunningFlow(false);
+      setRunningTaskId(null);
       isAutoRunningRef.current = false;
     }
   }
@@ -129,7 +132,7 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#F5F6FA] relative">
         <TopNav runtime={runtime} activeScenario={activeScenario} hasWorkspace={Boolean(workspace)} onClear={handleClear} />
         <BoardHeader view={view} setView={setView} onOpenWizard={() => setIsWizardOpen(true)} canRunFlow={Boolean(workspace)} hasCompletedFlow={hasCompletedFlow} isRunningFlow={isRunningFlow} onRunFlow={handleRunFlow} />
-        {view === 'kanban' ? <KanbanBoard tasks={tasks} activeScenario={activeScenario} onRunTask={handleRunTask} /> : <WorkflowView workflow={workflow} hasPlan={Boolean(workspace)} />}
+        {view === 'kanban' ? <KanbanBoard tasks={tasks} activeScenario={activeScenario} onRunTask={handleRunTask} runningTaskId={runningTaskId} /> : <WorkflowView workflow={workflow} hasPlan={Boolean(workspace)} />}
         <AnimatePresence>
           {isWizardOpen && <WorkflowWizard scenario={scenario} runtime={runtime} initialPrompt={draftPrompt} onClose={() => setIsWizardOpen(false)} onComplete={(nextWorkspace) => { 
             setHistoryBundle((prev) => ({ 

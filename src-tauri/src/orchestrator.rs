@@ -8,15 +8,19 @@ use crate::llm_client::*;
 use crate::store::*;
 use crate::ApiError;
 
+pub fn get_agent_skills(agent_id: &str) -> Vec<Skill> {
+    crate::skills::get_skills_for_agent(agent_id)
+}
+
 pub fn agent_catalog() -> Vec<AgentProfile> {
     vec![
-        AgentProfile { id: "manager".into(), name: "店长".into(), title: "总协调与决策指挥".into(), summary: "负责理解商家诉求、拆解任务、调度其余 6 个 Agent，并输出最终执行决策。".into(), capabilities: vec!["任务拆解".into(), "Agent 调度".into(), "进度监控".into(), "决策汇总".into()], color: "from-sky-500 to-cyan-400".into() },
-        AgentProfile { id: "designer".into(), name: "美工".into(), title: "商品视觉与活动素材".into(), summary: "聚焦商品图、Banner、详情页视觉方向，输出适合电商转化的设计指令与素材建议。".into(), capabilities: vec!["商品图设计".into(), "Banner 视觉".into(), "详情页结构".into(), "设计提示词".into()], color: "from-pink-500 to-rose-400".into() },
-        AgentProfile { id: "copywriter".into(), name: "文案".into(), title: "标题卖点与营销表达".into(), summary: "负责商品标题、卖点提炼、详情文案、活动话术与关键词优化。".into(), capabilities: vec!["标题优化".into(), "卖点提炼".into(), "详情文案".into(), "活动话术".into()], color: "from-amber-500 to-yellow-400".into() },
-        AgentProfile { id: "operator".into(), name: "运营".into(), title: "数据分析与推广策略".into(), summary: "根据经营目标给出数据洞察、上架节奏、促销策略与竞品分析建议。".into(), capabilities: vec!["数据分析".into(), "推广规划".into(), "竞品分析".into(), "活动策划".into()], color: "from-emerald-500 to-lime-400".into() },
-        AgentProfile { id: "service".into(), name: "客服".into(), title: "咨询回复与售后跟进".into(), summary: "处理售前问答、售后安抚、订单跟进与情绪识别。".into(), capabilities: vec!["自动回复".into(), "问题解答".into(), "售后安抚".into(), "情感分析".into()], color: "from-violet-500 to-fuchsia-400".into() },
-        AgentProfile { id: "finance".into(), name: "财务".into(), title: "利润核算与经营报表".into(), summary: "负责订单记账、毛利测算、预算提醒与财务视角日报。".into(), capabilities: vec!["收支记录".into(), "利润计算".into(), "预算监控".into(), "报表摘要".into()], color: "from-orange-500 to-amber-400".into() },
-        AgentProfile { id: "warehouse".into(), name: "仓储".into(), title: "库存监控与发货协同".into(), summary: "负责安全库存预警、补货建议、发货节奏与仓储风险提示。".into(), capabilities: vec!["库存预警".into(), "补货建议".into(), "发货安排".into(), "异常提示".into()], color: "from-teal-500 to-cyan-400".into() },
+        AgentProfile { id: "manager".into(), name: "店长".into(), title: "总协调与决策指挥".into(), summary: "负责理解商家诉求、拆解任务、调度其余 6 个 Agent，并输出最终执行决策。".into(), capabilities: vec!["任务拆解".into(), "Agent 调度".into(), "进度监控".into(), "决策汇总".into()], skills: get_agent_skills("manager"), color: "from-sky-500 to-cyan-400".into() },
+        AgentProfile { id: "designer".into(), name: "美工".into(), title: "商品视觉与活动素材".into(), summary: "聚焦商品图、Banner、详情页视觉方向，输出适合电商转化的设计指令与素材建议。".into(), capabilities: vec!["商品图设计".into(), "Banner 视觉".into(), "详情页结构".into(), "设计提示词".into()], skills: get_agent_skills("designer"), color: "from-pink-500 to-rose-400".into() },
+        AgentProfile { id: "copywriter".into(), name: "文案".into(), title: "标题卖点与营销表达".into(), summary: "负责商品标题、卖点提炼、详情文案、活动话术与关键词优化。".into(), capabilities: vec!["标题优化".into(), "卖点提炼".into(), "详情文案".into(), "活动话术".into()], skills: get_agent_skills("copywriter"), color: "from-amber-500 to-yellow-400".into() },
+        AgentProfile { id: "operator".into(), name: "运营".into(), title: "数据分析与推广策略".into(), summary: "根据经营目标给出数据洞察、上架节奏、促销策略与竞品分析建议。".into(), capabilities: vec!["数据分析".into(), "推广规划".into(), "竞品分析".into(), "活动策划".into()], skills: get_agent_skills("operator"), color: "from-emerald-500 to-lime-400".into() },
+        AgentProfile { id: "service".into(), name: "客服".into(), title: "咨询回复与售后跟进".into(), summary: "处理售前问答、售后安抚、订单跟进与情绪识别。".into(), capabilities: vec!["自动回复".into(), "问题解答".into(), "售后安抚".into(), "情感分析".into()], skills: get_agent_skills("service"), color: "from-violet-500 to-fuchsia-400".into() },
+        AgentProfile { id: "finance".into(), name: "财务".into(), title: "利润核算与经营报表".into(), summary: "负责订单记账、毛利测算、预算提醒与财务视角日报。".into(), capabilities: vec!["收支记录".into(), "利润计算".into(), "预算监控".into(), "报表摘要".into()], skills: get_agent_skills("finance"), color: "from-orange-500 to-amber-400".into() },
+        AgentProfile { id: "warehouse".into(), name: "仓储".into(), title: "库存监控与发货协同".into(), summary: "负责安全库存预警、补货建议、发货节奏与仓储风险提示。".into(), capabilities: vec!["库存预警".into(), "补货建议".into(), "发货安排".into(), "异常提示".into()], skills: get_agent_skills("warehouse"), color: "from-teal-500 to-cyan-400".into() },
     ]
 }
 
@@ -73,13 +77,16 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
         .json(&body)
         .send()
         .await?
-        .error_for_status()?
-        .json::<AnthropicResponse>()
-        .await?;
-
+        .error_for_status()?;
     crate::emit_log(app, "info", "收到大模型响应，正在解析结构化行动方案...");
 
-    let raw_text = extract_text(&response).ok_or(ApiError::EmptyResponse)?;
+    let response_body: Value = response.json().await?;
+    let raw_text = response_body["content"][0]["text"]
+        .as_str()
+        .or_else(|| response_body["choices"][0]["message"]["content"].as_str())
+        .ok_or(ApiError::EmptyResponse)?
+        .to_string();
+    
     let payload: Value = serde_json::from_str(&raw_text)?;
 
     let summary = payload.get("summary").and_then(Value::as_str).ok_or_else(|| ApiError::InvalidPayload("缺少 summary".into()))?.to_string();
@@ -167,6 +174,7 @@ pub fn build_tasks(plan: &OperationPlan) -> Vec<DashboardTask> {
             progress_color: if task_status == "done" { "bg-green-500".into() } else if task_status == "in-progress" { "bg-orange-400".into() } else { "bg-red-400".into() },
             date_color: if task_status == "done" { "text-slate-500 bg-slate-100".into() } else if task_status == "in-progress" { "text-orange-500 bg-orange-50".into() } else { "text-red-500 bg-red-50".into() },
             summary,
+            skills: if agent_id == "manager" { vec![] } else { get_agent_skills(&agent_id) },
         }
     }).collect()
 }
@@ -435,9 +443,16 @@ pub fn build_workspace_view(prompt: String, plan: OperationPlan) -> WorkspaceVie
 }
 
 fn build_system_prompt() -> String {
+    let skills = crate::skills::load_skills_from_folder();
+    let mut skill_list = String::new();
+    for s in skills {
+        skill_list.push_str(&format!("- {} ({}): {} [ID: {}]\n", s.name, s.triggers.join("/"), s.description, s.id));
+    }
+
     [
         "你是 ShopGen 的店长 Agent，总负责协调 7 个电商运营 Agent。",
         "你需要根据商家的输入，输出一个可执行的电商运营 JSON 方案。",
+        &format!("目前系统已内置以下专业技能 (Skills) SOP：\n{}", skill_list),
         "请只返回 JSON，不要返回 Markdown，不要加代码块，不要输出额外说明。",
         "JSON 字段必须完整，结构如下：",
         "{",
@@ -445,7 +460,7 @@ fn build_system_prompt() -> String {
         "  \"merchantIntent\": \"string\",",
         "  \"managerDecision\": \"string\",",
         "  \"agentAssignments\": [",
-        "    { \"agentId\": \"manager|designer|copywriter|operator|service|finance|warehouse\", \"agentName\": \"string\", \"objective\": \"string\", \"deliverable\": \"string\", \"status\": \"pending|active|blocked|done\" }",
+        "    { \"agentId\": \"manager|designer|copywriter|operator|service|finance|warehouse\", \"agentName\": \"string\", \"objective\": \"string\", \"deliverable\": \"string\", \"skillsRequired\": [\"string\"], \"status\": \"pending|active|blocked|done\" }",
         "  ],",
         "  \"workflowStages\": [",
         "    { \"name\": \"string\", \"owner\": \"string\", \"goal\": \"string\", \"action\": \"string\", \"status\": \"pending|active|blocked|done\" }",
@@ -457,29 +472,12 @@ fn build_system_prompt() -> String {
         "  \"dailyBrief\": \"string\"",
         "}",
         "要求：",
-        "1. 结合场景识别使用新品上架、促销活动策划、日常经营管理中的哪一种。",
+        "1. 结合场景识别使用哪个技能 SOP。在 agentAssignments 中填入对应的 skillsRequired (ID)。",
         "2. 至少分配 4 个 Agent，最多 7 个 Agent。",
         "3. 输出内容必须贴合个人电商商家的实际执行。",
         "4. 所有内容使用简体中文。",
     ].join("\n")
 }
 
-#[derive(Debug, serde::Deserialize)]
-pub struct AnthropicResponse {
-    pub content: Vec<AnthropicContent>,
-}
+// 移除冗余的 AnthropicResponse 结构体，统一使用 Value 处理以支持多模型
 
-#[derive(Debug, serde::Deserialize)]
-pub struct AnthropicContent {
-    #[serde(rename = "type")]
-    pub kind: String,
-    pub text: Option<String>,
-}
-
-pub fn extract_text(response: &AnthropicResponse) -> Option<String> {
-    response.content.iter().filter(|item| item.kind == "text").filter_map(|item| item.text.clone()).reduce(|mut acc, text| {
-        acc.push('\n');
-        acc.push_str(&text);
-        acc
-    })
-}

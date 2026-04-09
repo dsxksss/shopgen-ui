@@ -56,10 +56,21 @@ pub async fn request_stage_execution(
     let api_key = status.api_key.ok_or(ApiError::MissingEnv("ANTHROPIC_API_KEY"))?;
     let endpoint = format!("{}/v1/messages", status.base_url.trim_end_matches('/'));
     let model = status.model;
-    let agent_title = agent_name(&normalize_agent_id(&stage.owner));
+    let agent_id = normalize_agent_id(&stage.owner);
+    let agent_title = agent_name(&agent_id);
+    let skills = crate::skills::get_skills_for_agent(&agent_id);
+    let mut skill_instructions = String::new();
+    
+    if !skills.is_empty() {
+        skill_instructions.push_str("\n\n## Available Skills & SOPs:\n");
+        for skill in &skills {
+            skill_instructions.push_str(&format!("### {}\n{}\n\n", skill.name, skill.content));
+        }
+    }
+    println!(">>> [{}] 正在组装 Prompt，已加载 {} 个技能 SOP...", agent_title, skills.len());
 
     let system_prompt = format!(
-        "You are the {agent_title} agent in ShopGen. Execute the assigned workflow stage and return only the final deliverable in Markdown. If a visual asset is needed, insert [GEN_IMAGE: detailed English image prompt]."
+        "You are the {agent_title} agent in ShopGen. Execute the assigned workflow stage based on the merchant intent and following the SOPs provided in your skills. Return only the final deliverable in Markdown. If a visual asset is needed, insert [GEN_IMAGE: detailed English image prompt].{skill_instructions}"
     );
 
     crate::emit_log(app, "info", &format!("[{}] 开始思考任务「{}」...", agent_title, stage.name));
@@ -95,13 +106,16 @@ pub async fn request_stage_execution(
 
     if !response.status().is_success() {
         let err_msg = response.text().await.unwrap_or_default();
+        eprintln!("!!! [{}] API 请求失败: {}", agent_title, err_msg);
         crate::emit_log(app, "error", &format!("[{}] 思考失败: {}", agent_title, err_msg));
         return Err(ApiError::RequestFailed(err_msg));
     }
+    println!("<<< [{}] 收到 API 响应，正在解析内容...", agent_title);
 
     let response_body: serde_json::Value = response.json().await.map_err(|_| ApiError::ParseFailed)?;
     let mut text = response_body["content"][0]["text"]
         .as_str()
+        .or_else(|| response_body["choices"][0]["message"]["content"].as_str())
         .ok_or(ApiError::ParseFailed)?
         .to_string();
 
