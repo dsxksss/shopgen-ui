@@ -68,7 +68,7 @@ export const TriggerNode = ({ data }: any) => (
   <div className="bg-[var(--bg-card)] rounded-xl shadow-lg border border-purple-500/30 p-4 w-[220px] relative">
     <div className="flex items-center gap-2 mb-2 text-purple-500">
       <Play className="w-4 h-4 fill-current" />
-      <span className="text-[10px] font-black uppercase tracking-widest">Initialization</span>
+      <span className="text-[10px] font-black uppercase tracking-widest">流程初始化</span>
     </div>
     <h3 className="text-sm font-bold text-[var(--text-main)]">{data.title}</h3>
     <Handle type="source" position={Position.Right} className="w-2.5 h-2.5 !bg-purple-500 border-2 border-[var(--bg-card)]" />
@@ -80,7 +80,7 @@ export const ConditionNode = ({ data }: any) => (
     <Handle type="target" position={Position.Left} className="w-2.5 h-2.5 !bg-orange-400 border-2 border-[var(--bg-card)]" />
     <div className="flex items-center gap-2 mb-2 text-orange-400">
       <GitBranch className="w-4 h-4" />
-      <span className="text-[10px] font-black uppercase tracking-widest">Logic Hub</span>
+      <span className="text-[10px] font-black uppercase tracking-widest">逻辑中心</span>
     </div>
     <h3 className="text-sm font-bold text-[var(--text-main)]">{data.title}</h3>
     <Handle type="source" position={Position.Right} id="true" style={{ top: '30%' }} className="w-2 h-2 !bg-green-500 border-2 border-[var(--bg-card)]" />
@@ -105,12 +105,12 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
   const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } } as Edge, eds)), [setEdges]);
 
   const inspector = (workflow?.inspectors ?? {})[selectedNodeId] ?? { 
-    title: 'Ready for Generation', 
-    agentName: 'Shop Manager Agent', 
-    status: 'Waiting for AI Workflow...', 
-    statusSubtitle: 'Generate your business process first.', 
+    title: '等待生成', 
+    agentName: '分管 Agent', 
+    status: '等待 AI 规划工作流...', 
+    statusSubtitle: '请先通过 AI 构建您的业务流程。', 
     statusTone: 'todo' as const, 
-    inputs: [{ label: 'Status', value: 'Draft' }], 
+    inputs: [{ label: '状态', value: '草稿' }], 
     outputs: [], 
     tools: []
   };
@@ -140,7 +140,7 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
       {!hasPlan && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
           <div className="bg-[var(--bg-card)]/80 backdrop-blur-xl rounded-3xl border border-[var(--border-main)] px-8 py-5 shadow-2xl text-base font-black text-[var(--text-muted)] italic tracking-tight">
-            System Waiting for AI Task Decomposition...
+            系统正等待 AI 任务拆解中...
           </div>
         </div>
       )}
@@ -160,7 +160,7 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
 
         <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-8 no-scrollbar">
           <div>
-            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">Node Context</label>
+            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">节点上下文 (Context)</label>
             <div className={`border rounded-[24px] p-5 flex items-center gap-4 ${inspector.statusTone === 'done' ? 'bg-green-500/10 border-green-500/20' : inspector.statusTone === 'in-progress' ? 'bg-orange-500/10 border-orange-500/20' : 'bg-[var(--bg-app)] border-[var(--border-main)]'}`}>
               {inspector.statusTone === 'done' ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : inspector.statusTone === 'in-progress' ? <Loader2 className="w-6 h-6 text-orange-500 animate-spin" /> : <ShieldAlert className="w-6 h-6 text-[var(--text-muted)]" />}
               <div>
@@ -171,7 +171,7 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
           </div>
 
           <div>
-            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">Operational Inputs</label>
+            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">输入参数 (Operational Inputs)</label>
             <div className="space-y-3">
               {inspector.inputs.map((item) => (
                 <div key={item.label} className="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl p-4">
@@ -184,7 +184,7 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
 
           {inspector.outputs && inspector.outputs.length > 0 && (
             <div>
-              <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">Artifact Outputs</label>
+              <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">交付产出 (Artifact Outputs)</label>
               <div className="space-y-4">
                 {inspector.outputs.map((item, idx) => (
                   <div key={idx} className="bg-[var(--bg-sidebar)] border border-[var(--border-main)] rounded-[32px] p-6 shadow-sm overflow-hidden">
@@ -208,7 +208,7 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
 
           {inspector.tools && inspector.tools.length > 0 && (
             <div>
-              <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">Service Orchestration</label>
+              <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">服务编排 (Service Orchestration)</label>
               <div className="border border-[var(--border-main)] rounded-[24px] overflow-hidden bg-[var(--bg-app)]">
                 {inspector.tools.map((tool, index: number) => (
                   <div key={tool.label} className={`p-4 flex items-center justify-between ${index < inspector.tools.length - 1 ? 'border-b border-[var(--border-soft)]' : ''} ${tool.active ? 'bg-[var(--border-soft)]' : ''}`}>
@@ -268,7 +268,7 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
       setStep(3);
     } catch (err: unknown) {
       const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : JSON.stringify(err);
-      setError(msg || 'Decomposition Failed');
+      setError(msg || '拆解流程失败');
       setStep(1);
     } finally {
       setLoading(false);
@@ -291,10 +291,10 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
             <div className="absolute top-6 left-24 right-24 h-1 bg-[var(--border-main)] z-0 rounded-full">
               <motion.div className="h-full bg-green-500 rounded-full" animate={{ width: `${((step - 1) / 3) * 100}%` }} />
             </div>
-            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={1} icon={MessageSquare} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Requirement</span></div>
-            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={2} icon={Wand2} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Decomposition</span></div>
-            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={3} icon={Users} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Deployment</span></div>
-            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={4} icon={CheckCircle2} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Validation</span></div>
+            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={1} icon={MessageSquare} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">业务需求</span></div>
+            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={2} icon={Wand2} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">专家拆解</span></div>
+            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={3} icon={Users} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">执行规划</span></div>
+            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={4} icon={CheckCircle2} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">流程就绪</span></div>
           </div>
         </div>
 
@@ -302,30 +302,30 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
           <div className="grid grid-cols-4 gap-8">
             {/* Step 1: Input */}
             <div className={`flex flex-col p-8 rounded-[40px] h-[360px] transition-all duration-500 ${step === 1 ? 'bg-[var(--bg-card)] shadow-2xl border-2 border-[var(--accent)] ring-8 ring-[var(--accent)]/5' : 'bg-[var(--bg-card)]/50 opacity-60'}`}>
-              <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Project Intent</h3>
+              <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">项目目标</h3>
               {step === 1 ? (
                 <>
-                  <textarea className="flex-1 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl p-4 text-sm text-[var(--text-main)] font-medium outline-none focus:ring-2 focus:ring-[var(--accent)] transition-all resize-none shadow-inner" placeholder="Tell us about your product or event..." value={prompt} onChange={(e) => setPrompt(e.target.value)} autoFocus />
+                  <textarea className="flex-1 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl p-4 text-sm text-[var(--text-main)] font-medium outline-none focus:ring-2 focus:ring-[var(--accent)] transition-all resize-none shadow-inner" placeholder="请描述您的产品或活动需求..." value={prompt} onChange={(e) => setPrompt(e.target.value)} autoFocus />
                   {error && <p className="mt-2 text-[10px] text-red-500 font-bold uppercase">{error}</p>}
-                  <button onClick={startGenerate} disabled={!prompt.trim() || !runtime?.configured || loading} className="mt-6 w-full py-4 bg-[var(--accent)] text-[var(--bg-sidebar)] rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] shadow-xl disabled:opacity-30 active:scale-[0.98] transition-all">Analyze Goals</button>
+                  <button onClick={startGenerate} disabled={!prompt.trim() || !runtime?.configured || loading} className="mt-6 w-full py-4 bg-[var(--accent)] text-[var(--bg-sidebar)] rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] shadow-xl disabled:opacity-30 active:scale-[0.98] transition-all">分析目标</button>
                 </>
               ) : (
                 <>
                   <div className="flex-1 overflow-y-auto text-sm font-medium text-[var(--text-muted)] leading-relaxed italic pr-2"><p>{wizard?.prompt || prompt}</p></div>
-                  <button onClick={() => setStep(1)} className="mt-6 w-full py-3 bg-[var(--bg-app)] text-[var(--text-muted)] rounded-2xl text-xs font-black uppercase tracking-widest hover:text-[var(--text-main)] transition-all">Refine Requirements</button>
+                  <button onClick={() => setStep(1)} className="mt-6 w-full py-3 bg-[var(--bg-app)] text-[var(--text-muted)] rounded-2xl text-xs font-black uppercase tracking-widest hover:text-[var(--text-main)] transition-all">重新调整需求</button>
                 </>
               )}
             </div>
 
             {/* Step 2: Thought */}
             <div className={`flex flex-col p-8 rounded-[40px] h-[360px] transition-all duration-500 ${step === 2 ? 'bg-[var(--bg-card)] shadow-2xl border-2 border-[var(--accent)] ring-8 ring-[var(--accent)]/5' : 'bg-[var(--bg-card)]/50 opacity-60'}`}>
-               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Agent Logic</h3>
+               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Agent 执行逻辑</h3>
                {step === 2 ? (
                  <div className="flex-1 flex flex-col items-center justify-center text-center">
                     <div className="w-12 h-12 border-4 border-[var(--border-main)] border-t-purple-500 rounded-full animate-spin mb-4" />
-                    <p className="text-xs font-black text-[var(--text-main)] uppercase tracking-widest">Master Agent is Strategizing...</p>
+                    <p className="text-xs font-black text-[var(--text-main)] uppercase tracking-widest">总控 Agent 正在制定策略...</p>
                     <div className="mt-6 w-full flex-1 bg-[var(--bg-app)] rounded-2xl p-4 overflow-y-auto font-mono text-[9px] text-[var(--text-muted)] border border-[var(--border-main)] leading-relaxed italic no-scrollbar">
-                       {thought || "Gathering expertise..."}
+                       {thought || "正在调取专家知识库..."}
                        <span className="inline-block w-1 h-3 bg-purple-500 ml-1 animate-pulse" />
                     </div>
                  </div>
@@ -336,14 +336,14 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
                         <div key={i} className="flex gap-2 text-[11px] font-bold text-[var(--text-main)] leading-snug"><Check className="w-3 h-3 text-green-500 shrink-0" /> {item}</div>
                       ))}
                    </div>
-                   <button className="mt-6 w-full py-3 bg-[var(--bg-app)] text-[var(--text-muted)] rounded-2xl text-xs font-black uppercase tracking-widest cursor-default">Strategy Defined</button>
+                   <button className="mt-6 w-full py-3 bg-[var(--bg-app)] text-[var(--text-muted)] rounded-2xl text-xs font-black uppercase tracking-widest cursor-default">执行策略已制定</button>
                  </>
                ) : null}
             </div>
 
             {/* Step 3: Team */}
             <div className={`flex flex-col p-8 rounded-[40px] h-[360px] transition-all duration-500 ${step === 3 ? 'bg-[var(--bg-card)] shadow-2xl border-2 border-[var(--accent)] ring-8 ring-[var(--accent)]/5' : 'bg-[var(--bg-card)]/50 opacity-60'}`}>
-               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Expert Deployment</h3>
+               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">专家部署规划</h3>
                {step === 3 && wizard ? (
                  <>
                    <div className="flex-1 overflow-y-auto space-y-2 pr-2 no-scrollbar">
@@ -357,7 +357,7 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
                         );
                       })}
                    </div>
-                   <button onClick={() => setStep(4)} className="mt-6 w-full py-4 bg-[var(--accent)] text-[var(--bg-sidebar)] rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all">Confirm Team</button>
+                   <button onClick={() => setStep(4)} className="mt-6 w-full py-4 bg-[var(--accent)] text-[var(--bg-sidebar)] rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all">确认专家团队</button>
                  </>
                ) : step > 3 && wizard ? (
                  <div className="flex-1 flex flex-col justify-center gap-4">
@@ -367,19 +367,19 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
                          return <div key={i} className={`w-12 h-12 rounded-full border-4 border-[var(--bg-card)] ${agent.color} text-white font-black flex items-center justify-center shadow-xl`}>{agent.initial}</div>
                        })}
                     </div>
-                    <div className="text-center font-black text-[10px] text-green-500 uppercase tracking-widest bg-green-500/10 py-2 rounded-xl border border-green-500/20">{wizard.teamAgentIds.length} Agents Ready</div>
+                    <div className="text-center font-black text-[10px] text-green-500 uppercase tracking-widest bg-green-500/10 py-2 rounded-xl border border-green-500/20">{wizard.teamAgentIds.length} 位专家已就绪</div>
                  </div>
                ) : null}
             </div>
 
             {/* Step 4: Ready */}
             <div className={`flex flex-col p-8 rounded-[40px] h-[360px] transition-all duration-500 ${step === 4 ? 'bg-[var(--bg-card)] shadow-2xl border-2 border-[var(--accent)] ring-8 ring-[var(--accent)]/5' : 'bg-[var(--bg-card)]/50 opacity-60'}`}>
-               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Infrastructure</h3>
+               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">系统基础设施</h3>
                {step === 4 && wizard ? (
                  <div className="flex-1 flex flex-col items-center justify-center">
                     <div className="w-16 h-16 bg-green-500/10 text-green-500 rounded-[24px] flex items-center justify-center mb-6 shadow-xl border border-green-500/20"><CheckCircle2 className="w-10 h-10" /></div>
                     <p className="text-[10px] font-black text-[var(--text-muted)] leading-relaxed italic text-center mb-6 px-2">{wizard.readySummary}</p>
-                    <button onClick={() => workspace && onComplete(workspace)} className="w-full py-5 bg-green-500 text-white rounded-3xl font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-green-500/40 hover:scale-[1.05] active:scale-[0.95] transition-all pulse-green">Synthesize Flow</button>
+                    <button onClick={() => workspace && onComplete(workspace)} className="w-full py-5 bg-green-500 text-white rounded-3xl font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-green-500/40 hover:scale-[1.05] active:scale-[0.95] transition-all pulse-green">合成并进入工作流</button>
                  </div>
                ) : null}
             </div>
@@ -389,9 +389,9 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
         <div className="p-8 px-16 bg-[var(--bg-sidebar)] border-t border-[var(--border-soft)] flex items-center justify-between">
            <div className="flex items-center gap-4">
               <div className="w-3 h-3 rounded-full bg-green-500" />
-              <span className="text-[10px] font-black text-[var(--text-main)] uppercase tracking-[0.3em]">ShopGen AI Orchestrator v2.0 // System Stable</span>
+              <span className="text-[10px] font-black text-[var(--text-main)] uppercase tracking-[0.3em]">ShopGen AI 编排系统 v2.0 // 运行稳定</span>
            </div>
-           <button onClick={onClose} className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest hover:text-[var(--text-main)] flex items-center gap-2 transition-all">Terminate Protocol <ChevronDown className="w-4 h-4" /></button>
+           <button onClick={onClose} className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest hover:text-[var(--text-main)] flex items-center gap-2 transition-all">关闭退出 <ChevronDown className="w-4 h-4" /></button>
         </div>
       </motion.div>
     </div>

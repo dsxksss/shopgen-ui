@@ -102,7 +102,7 @@ export function TaskCard({ task, index, onClick, isRunning, onRun }: { task: Das
       <div className="mb-6">
         <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-muted)] mb-2">
           <span className="flex items-center gap-1.5 uppercase tracking-wide">
-            <LayoutGrid className="w-3.5 h-3.5" /> Progress
+            <LayoutGrid className="w-3.5 h-3.5" /> 任务进度
           </span>
           <span className="text-[var(--text-main)]">{task.progress}/{task.totalSteps}</span>
         </div>
@@ -209,7 +209,7 @@ export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onCl
           {extractImages(task.summary || '').length > 0 && (
             <div className="space-y-4">
                <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] flex items-center gap-2">
-                  <ImageIcon className="w-3.5 h-3.5" /> Generated Visual Assets
+                  <ImageIcon className="w-3.5 h-3.5" /> 生成的视觉资源
                </label>
                <ImageCarousel images={extractImages(task.summary || '')} />
             </div>
@@ -240,11 +240,11 @@ export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onCl
 
           <div className="grid grid-cols-2 gap-6">
              <div className="bg-[var(--bg-app)] p-5 rounded-2xl border border-[var(--border-main)] flex flex-col gap-1">
-               <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Execution Status</span>
-               <span className={`text-lg font-bold ${task.status === 'done' ? 'text-green-500' : 'text-orange-500'}`}>{task.status === 'done' ? 'Completed' : 'Developing'}</span>
+               <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">执行状态</span>
+               <span className={`text-lg font-bold ${task.status === 'done' ? 'text-green-500' : 'text-orange-500'}`}>{task.status === 'done' ? '已完成' : '正在执行'}</span>
              </div>
              <div className="bg-[var(--bg-app)] p-5 rounded-2xl border border-[var(--border-main)] flex flex-col gap-1">
-               <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Step Progression</span>
+               <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">步骤进度</span>
                <div className="flex items-center gap-3">
                   <div className="flex-1 h-2 bg-[var(--border-main)] rounded-full overflow-hidden">
                     <motion.div className={`h-full ${task.progressColor}`} initial={{ width: 0 }} animate={{ width: `${(task.progress / (task.totalSteps || 1)) * 100}%` }} />
@@ -255,7 +255,7 @@ export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onCl
           </div>
 
           <div className="space-y-4">
-            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">Operational Agents</label>
+            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">协作专家团队</label>
             <div className="flex flex-wrap gap-3">
               {task.agentIds.map((agentId, i) => { 
                 const agent = AGENTS[normalizeAgentId(agentId)]; 
@@ -283,9 +283,9 @@ export const KanbanBoard: React.FC<{ tasks: DashboardTask[]; activeScenario: str
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-hidden px-8 pb-8 pt-4 flex flex-col relative">
       <div className="flex-1 overflow-x-auto pb-4 no-scrollbar">
         <div className="flex space-x-8 h-full min-w-max px-2">
-          <Column title="To Do" tasks={scopedTasks.filter(t => t.status === 'todo')} icon={<Clock className="w-4 h-4 text-[var(--text-muted)]" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
-          <Column title="In Progress" tasks={scopedTasks.filter(t => t.status === 'in-progress' || runningTaskId === t.id)} icon={<Activity className="w-4 h-4 text-orange-500" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
-          <Column title="Completed" tasks={scopedTasks.filter(t => t.status === 'done' && runningTaskId !== t.id)} icon={<CheckCircle2 className="w-4 h-4 text-green-500" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
+          <Column title="待处理" tasks={scopedTasks.filter(t => t.status === 'todo')} icon={<Clock className="w-4 h-4 text-[var(--text-muted)]" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
+          <Column title="执行中" tasks={scopedTasks.filter(t => t.status === 'in-progress' || runningTaskId === t.id)} icon={<Activity className="w-4 h-4 text-orange-500" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
+          <Column title="已完成" tasks={scopedTasks.filter(t => t.status === 'done' && runningTaskId !== t.id)} icon={<CheckCircle2 className="w-4 h-4 text-green-500" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
         </div>
       </div>
       <AnimatePresence>

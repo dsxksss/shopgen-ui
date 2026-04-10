@@ -25,6 +25,8 @@ import {
 import type { WorkspaceHistoryItem, DashboardTask, RuntimeStatus } from '../lib/types';
 import { MenuKey } from '../lib/utils';
 import { saveApiConfig } from '../lib/api';
+import logo from '../assets/logo.png';
+
 
 /**
  * Custom hook to handle theme switching with a Telegram-style circular reveal.
@@ -226,30 +228,44 @@ export function LightSidebar({ activeMenu, setActiveMenu, tasks, history, curren
   return (
     <motion.div initial={false} animate={{ width: isCollapsed ? 72 : 260 }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="bg-[var(--bg-sidebar)] h-full border-r border-[var(--border-main)] flex flex-col shrink-0 z-10 overflow-hidden relative shadow-[1px_0_10px_rgba(0,0,0,0.02)]">
       <div className={`p-6 flex items-center justify-between border-b border-[var(--border-soft)] ${isCollapsed ? 'px-4' : ''}`}>
-        {!isCollapsed && <h1 className="text-xl font-bold text-[var(--text-main)] tracking-tighter italic">ShopGen</h1>}
-        <button onClick={onToggleCollapse} className={`w-7 h-7 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] flex items-center justify-center hover:bg-[var(--border-soft)] transition-all ${isCollapsed ? 'mx-auto' : ''}`}>
-          <ChevronRight className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
-        </button>
+        {!isCollapsed ? (
+          <div className="flex items-center gap-3">
+             <div className="w-10 h-10 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] p-0 flex items-center justify-center shadow-sm overflow-hidden">
+                <img src={logo} alt="ShopGen Logo" className="w-full h-full object-contain scale-125" />
+             </div>
+             <h1 className="text-xl font-bold text-[var(--text-main)] tracking-tighter italic">ShopGen</h1>
+          </div>
+        ) : (
+          <button onClick={onToggleCollapse} className="w-10 h-10 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] p-0 flex items-center justify-center shadow-sm mx-auto overflow-hidden hover:border-[var(--accent)] transition-all">
+             <img src={logo} alt="ShopGen Logo" className="w-full h-full object-contain scale-125" />
+          </button>
+        )}
+        {!isCollapsed && (
+          <button onClick={onToggleCollapse} className="w-7 h-7 rounded-xl bg-[var(--bg-app)] border border-[var(--border-main)] flex items-center justify-center hover:bg-[var(--border-soft)] transition-all">
+            <ChevronRight className={`w-4 h-4 text-[var(--text-muted)] transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
+          </button>
+        )}
       </div>
+
 
       <div className="flex-1 overflow-y-auto py-6 flex flex-col gap-8 no-scrollbar">
         <div className="px-4">
-          {!isCollapsed && <p className="text-[10px] font-black text-[var(--text-muted)] mb-3 px-3 uppercase tracking-[0.15em]">Main Space</p>}
+          {!isCollapsed && <p className="text-[10px] font-black text-[var(--text-muted)] mb-3 px-3 uppercase tracking-[0.15em]">核心空间</p>}
           <NavItem icon={<LayoutGrid />} label="总览看板" isActive={activeMenu === 'overview'} onClick={() => setActiveMenu('overview')} badge={tasks.length || undefined} isCollapsed={isCollapsed} />
         </div>
         <div className="px-4">
-          {!isCollapsed && <p className="text-[10px] font-black text-[var(--text-muted)] mb-3 px-3 uppercase tracking-[0.15em]">Execution</p>}
+          {!isCollapsed && <p className="text-[10px] font-black text-[var(--text-muted)] mb-3 px-3 uppercase tracking-[0.15em]">流程执行</p>}
           <NavItem icon={<Package />} label="新品上架流程" badge={newProductCount || undefined} isActive={activeMenu === 'new-product'} onClick={() => setActiveMenu('new-product')} isCollapsed={isCollapsed} />
         </div>
         <div className="px-4">
-          {!isCollapsed && <p className="text-[10px] font-black text-[var(--text-muted)] mb-3 px-3 uppercase tracking-[0.15em]">Control</p>}
+          {!isCollapsed && <p className="text-[10px] font-black text-[var(--text-muted)] mb-3 px-3 uppercase tracking-[0.15em]">系统控制</p>}
           <NavItem icon={<Settings />} label="系统服务设置" isActive={activeMenu === 'settings'} onClick={() => setActiveMenu('settings')} isCollapsed={isCollapsed} />
         </div>
         {!isCollapsed && (
           <div className="px-4">
             <div className="flex items-center gap-2 mb-3 px-3">
               <History className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-              <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em]">History</p>
+              <p className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.15em]">任务历史</p>
             </div>
             <HistoryList history={history} currentRequestId={currentRequestId} onSwitch={onSwitchHistory} onDelete={onDeleteHistory} onRename={onRenameHistory} onTogglePin={onTogglePinHistory} />
           </div>
@@ -270,15 +286,15 @@ export function TopNav({ runtime, activeScenario, hasWorkspace, onClear }: { run
   return (
     <motion.div initial={{ y: -20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="h-[88px] px-8 flex items-center justify-between shrink-0 bg-[var(--bg-app)]">
       <div>
-        <h2 className="text-2xl font-bold text-[var(--text-main)] italic">Workbench</h2>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">Project: {activeScenario}</p>
+        <h2 className="text-2xl font-bold text-[var(--text-main)] italic">工作台</h2>
+        <p className="text-sm text-[var(--text-muted)] mt-0.5">当前项目: {activeScenario}</p>
       </div>
       <div className="flex items-center gap-3">
         {hasWorkspace && <button onClick={onClear} className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[var(--bg-card)] text-[var(--text-main)] border border-[var(--border-main)] hover:bg-[var(--bg-app)] transition-all">
           <RefreshCcw className="w-3.5 h-3.5" />清空画布
         </button>}
         <div className={`px-4 py-2 rounded-xl text-xs font-bold shadow-sm border ${runtime?.configured ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
-          {runtime?.configured ? `● ${runtime.model}` : '○ API DISCONNECTED'}
+          {runtime?.configured ? `● ${runtime.model}` : '○ API 未连接'}
         </div>
       </div>
     </motion.div>
@@ -347,28 +363,28 @@ export function SettingsPage({ runtime, onSaved }: { runtime: RuntimeStatus | nu
              <Settings className="w-6 h-6" />
            </div>
            <div>
-             <h1 className="text-3xl font-black text-[var(--text-main)] tracking-tight">System Settings</h1>
-             <p className="text-[var(--text-muted)] font-medium">Configure Infrastructure</p>
+             <h1 className="text-3xl font-black text-[var(--text-main)] tracking-tight">系统设置</h1>
+             <p className="text-[var(--text-muted)] font-medium">基础模型基础设施配置</p>
            </div>
         </div>
 
         <div className="grid grid-cols-1 gap-10">
           <section className="space-y-6">
             <h2 className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-blue-500" /> LLM Main Engine
+              <Sparkles className="w-4 h-4 text-blue-500" /> LLM 核心引擎
             </h2>
             <div className="grid grid-cols-1 gap-6 p-8 bg-[var(--bg-app)] rounded-3xl border border-[var(--border-main)]">
                 <div className="space-y-2">
-                  <label className="text-[11px] font-black text-[var(--text-muted)] uppercase ml-1">Endpoint</label>
+                  <label className="text-[11px] font-black text-[var(--text-muted)] uppercase ml-1">接口地址 (Endpoint)</label>
                   <input value={baseUrl} onChange={e => setBaseUrl(e.target.value)} className="w-full bg-[var(--bg-card)] border border-[var(--border-main)] rounded-2xl px-5 py-3.5 text-sm text-[var(--text-main)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-[var(--text-muted)] uppercase ml-1">Model ID</label>
+                    <label className="text-[11px] font-black text-[var(--text-muted)] uppercase ml-1">模型标识 (Model ID)</label>
                     <input value={model} onChange={e => setModel(e.target.value)} className="w-full bg-[var(--bg-card)] border border-[var(--border-main)] rounded-2xl px-5 py-3.5 text-sm text-[var(--text-main)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[11px] font-black text-[var(--text-muted)] uppercase ml-1">API Key</label>
+                    <label className="text-[11px] font-black text-[var(--text-muted)] uppercase ml-1">密钥 (API Key)</label>
                     <div className="relative">
                       <input type={showApiKey ? "text" : "password"} value={apiKey} onChange={e => setApiKey(e.target.value)} className="w-full bg-[var(--bg-card)] border border-[var(--border-main)] rounded-2xl px-5 py-3.5 text-sm font-mono text-[var(--text-main)] outline-none focus:ring-1 focus:ring-[var(--accent)]" />
                       <button onClick={() => setShowApiKey(!showApiKey)} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-main)]">{showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
@@ -380,7 +396,7 @@ export function SettingsPage({ runtime, onSaved }: { runtime: RuntimeStatus | nu
 
           <section className="space-y-6">
             <h2 className="text-sm font-bold text-[var(--text-muted)] uppercase tracking-widest flex items-center gap-2">
-              <ImageIcon className="w-4 h-4 text-purple-500" /> Visual Identity Key
+              <ImageIcon className="w-4 h-4 text-purple-500" /> 视觉生成密钥
             </h2>
             <div className="p-8 bg-purple-500/5 rounded-3xl border border-purple-500/20">
                <input value={openrouterKey} onChange={e => setOpenrouterKey(e.target.value)} className="w-full bg-[var(--bg-card)] border border-purple-500/20 rounded-2xl px-5 py-3.5 text-sm font-mono text-[var(--text-main)] outline-none" placeholder="sk-..." />
@@ -389,7 +405,7 @@ export function SettingsPage({ runtime, onSaved }: { runtime: RuntimeStatus | nu
 
           <div className="pt-10 flex justify-end">
             <button onClick={handleSave} disabled={loading} className="px-12 py-4 bg-[var(--accent)] text-[var(--bg-sidebar)] rounded-[24px] font-bold shadow-2xl hover:scale-[1.02] transition-all disabled:opacity-50">
-              {loading ? "SAVING..." : "SYNC CONFIGURATION"}
+              {loading ? "正在保存..." : "同步配置信息"}
             </button>
           </div>
         </div>

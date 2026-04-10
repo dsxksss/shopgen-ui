@@ -228,7 +228,7 @@ export default function App() {
       <button
         onClick={async () => {
           const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow');
-          const webview = new WebviewWindow('debug-panel', { url: '/?window=debug', title: 'ShopGen Backend Session', width: 800, height: 600, resizable: true, center: true });
+          const webview = new WebviewWindow('debug-panel', { url: '/?window=debug', title: 'ShopGen 后端会话', width: 800, height: 600, resizable: true, center: true });
           webview.once('tauri://error', (e) => console.error('Window open error', e));
         }}
         className="fixed bottom-6 right-6 z-40 bg-slate-900 text-slate-100 p-3 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 group border border-slate-700"

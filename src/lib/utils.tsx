@@ -103,7 +103,7 @@ export function buildReactFlowPayload(payload: WorkflowPayload) {
     if (node.kind === 'trigger') return { id: node.id, type: 'triggerNode', position: { x: node.x, y: node.y }, data: { title: node.title } };
     if (node.kind === 'condition') return { id: node.id, type: 'conditionNode', position: { x: node.x, y: node.y }, data: { title: node.title } };
     const agentId = normalizeAgentId(node.agentId ?? 'manager');
-    return { id: node.id, type: 'agentNode', position: { x: node.x, y: node.y }, data: { title: node.title, agentName: node.subtitle ?? `${AGENTS[agentId].name} Agent`, agentColor: AGENTS[agentId].nodeColor, icon: agentIcon(agentId), description: node.description ?? '', status: node.status === 'done' ? 'done' : node.status === 'in-progress' ? 'in-progress' : 'todo' } };
+    return { id: node.id, type: 'agentNode', position: { x: node.x, y: node.y }, data: { title: node.title, agentName: node.subtitle ?? `${AGENTS[agentId].name} 专家`, agentColor: AGENTS[agentId].nodeColor, icon: agentIcon(agentId), description: node.description ?? '', status: node.status === 'done' ? 'done' : node.status === 'in-progress' ? 'in-progress' : 'todo' } };
   });
   const edges: Edge[] = payload.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle, label: edge.label, animated: edge.animated, style: { stroke: edge.stroke, strokeWidth: 2 } }));
   return { nodes, edges };
