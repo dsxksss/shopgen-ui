@@ -101,7 +101,53 @@ pub fn read_workspace_by_id(app: &tauri::AppHandle, request_id: &str) -> Result<
     if !path.exists() {
         return Err(ApiError::WorkspaceNotFound(request_id.into()));
     }
-    Ok(serde_json::from_str::<WorkspaceView>(&fs::read_to_string(path)?)?)
+    
+    let content = fs::read_to_string(path)?;
+    let mut view: WorkspaceView = serde_json::from_str(&content)?;
+
+    // 后端核心执行计划状态重置
+    for stage in &mut view.plan.workflow_stages {
+        if stage.status == "active" || stage.status == "in-progress" || stage.status == "pending" {
+            stage.status = "todo".to_string();
+        }
+    }
+    for assignment in &mut view.plan.agent_assignments {
+        if assignment.status == "active" || assignment.status == "in-progress" || assignment.status == "pending" {
+            assignment.status = "todo".to_string();
+        }
+    }
+
+    // 前端 UI 卡片状态重置（Kanban 面板接受的是 todo/in-progress/done）
+    for task in &mut view.tasks {
+        if task.status == "active" || task.status == "in-progress" || task.status == "pending" {
+            task.status = "todo".to_string();
+            // 同时把原本是橙色的进度条颜色重置回红色的 todo 状态
+            task.progress_color = "bg-red-400".to_string();
+            task.date_color = "text-red-500 bg-red-50".to_string();
+        }
+    }
+
+    // 前端流程图节点状态重置
+    for node in &mut view.workflow.nodes {
+        if let Some(status) = &mut node.status {
+            if status == "active" || status == "in-progress" || status == "pending" {
+                *status = "todo".to_string();
+            }
+        }
+    }
+
+    // 重置流程详情检查器状态
+    for (_, inspector) in &mut view.workflow.inspectors {
+        if inspector.status_tone == "in-progress" {
+            inspector.status_tone = "todo".to_string();
+            if inspector.status == "正在运行" || inspector.status.contains("正在") {
+                 inspector.status = "等待重新启动".to_string();
+                 inspector.status_subtitle = "由于软件重启，该任务已暂停。您可以重新点击运行。".to_string();
+            }
+        }
+    }
+
+    Ok(view)
 }
 
 pub fn load_workspace_history_bundle(app: &tauri::AppHandle) -> Result<WorkspaceHistoryBundle, ApiError> {

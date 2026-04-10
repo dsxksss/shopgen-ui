@@ -37,7 +37,7 @@ export interface AgentAssignment {
   agentName: string;
   objective: string;
   deliverable: string;
-  status: 'pending' | 'active' | 'blocked' | 'done';
+  status: 'todo' | 'in-progress' | 'blocked' | 'done';
 }
 
 export interface WorkflowStage {
@@ -45,7 +45,7 @@ export interface WorkflowStage {
   owner: string;
   goal: string;
   action: string;
-  status: 'pending' | 'active' | 'blocked' | 'done';
+  status: 'todo' | 'in-progress' | 'blocked' | 'done';
   output?: string;
 }
 

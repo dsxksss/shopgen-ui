@@ -72,13 +72,17 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
     let mut stream = response.bytes_stream();
     let mut full_text = String::new();
     let mut thinking_text = String::new();
+    let mut line_buffer = String::new();
 
     while let Some(item) = stream.next().await {
         let chunk = item.map_err(|e: reqwest::Error| ApiError::RequestFailed(e.to_string()))?;
         let text = String::from_utf8_lossy(&chunk);
-        
-        // 处理 SSE 事件流 (兼容 OpenAI 和 Anthropic 格式)
-        for line in text.lines() {
+        line_buffer.push_str(&text);
+
+        while let Some(pos) = line_buffer.find('\n') {
+            let line = line_buffer[..pos].trim().to_string();
+            line_buffer.drain(..pos + 1);
+
             if line.starts_with("data: ") {
                 let data = line.trim_start_matches("data: ");
                 if data == "[DONE]" || data.is_empty() { continue; }
@@ -97,10 +101,13 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
                     // 2. OpenAI 格式提取
                     else if let Some(choices) = json.get("choices").and_then(|c| c.as_array()) {
                         if !choices.is_empty() {
-                            if let Some(delta) = choices[0].get("delta") {
-                                if let Some(txt) = delta.get("content").and_then(Value::as_str) {
-                                    full_text.push_str(txt);
-                                }
+                            let delta = &choices[0]["delta"];
+                            if let Some(txt) = delta.get("content").and_then(Value::as_str) {
+                                full_text.push_str(txt);
+                            }
+                            if let Some(think) = delta.get("thinking").and_then(Value::as_str) {
+                                thinking_text.push_str(think);
+                                let _ = app.emit("planner-thought", think);
                             }
                         }
                     }
@@ -110,10 +117,25 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
     }
 
     if full_text.is_empty() {
+        eprintln!("!!! 关键错误：流式接收完成，但没有捕获到任何有效文本。接收到的思考长度：{}", thinking_text.len());
         return Err(ApiError::EmptyResponse);
     }
     
-    let payload: Value = serde_json::from_str(&full_text)?;
+    // 清洗 JSON：由于某些大模型即使被强制要求也会在前后附带 Markdown 文字，所以这里使用边界截取法
+    let clean_json = if let (Some(start), Some(end)) = (full_text.find('{'), full_text.rfind('}')) {
+        if start <= end {
+            full_text[start..=end].to_string()
+        } else {
+            full_text.clone()
+        }
+    } else {
+        full_text.clone()
+    };
+
+    let payload: Value = serde_json::from_str(&clean_json).map_err(|e| {
+        eprintln!("!!! JSON 解析失败。清理后的内容为：\n{}\n错误原因：{}", clean_json, e);
+        ApiError::InvalidPayload(e.to_string())
+    })?;
 
     let summary = payload.get("summary").and_then(Value::as_str).ok_or_else(|| ApiError::InvalidPayload("缺少 summary".into()))?.to_string();
     let merchant_intent = payload.get("merchantIntent").and_then(Value::as_str).ok_or_else(|| ApiError::InvalidPayload("缺少 merchantIntent".into()))?.to_string();
@@ -143,17 +165,18 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
 }
 
 fn status_to_task_status(status: &str) -> &'static str {
-    match status {
+    match status.trim() {
         "done" => "done",
-        "active" => "in-progress",
+        "in-progress" | "active" => "in-progress",
         _ => "todo",
     }
 }
 
 fn progress_for_status(status: &str, total_steps: u8) -> u8 {
-    match status {
+    let normalized = status_to_task_status(status);
+    match normalized {
         "done" => total_steps,
-        "active" => ((total_steps as f32) * 0.6).ceil() as u8,
+        "in-progress" => ((total_steps as f32) * 0.6).ceil() as u8,
         _ => ((total_steps as f32) * 0.2).ceil().max(1.0) as u8,
     }
 }
@@ -246,23 +269,17 @@ pub fn build_workflow(plan: &OperationPlan) -> WorkflowPayload {
         inspectors.insert(node_id.clone(), WorkflowInspector {
             title: stage.name.clone(),
             agent_name: format!("{} Agent", agent_name(&agent_id)),
-            status: if stage.status == "done" { "已完成当前阶段".into() } else if stage.status == "active" { "正在执行当前阶段...".into() } else { "等待店长调度执行".into() },
-            status_subtitle: if stage.status == "done" { "本阶段结果已回写到工作台".into() } else if stage.status == "active" { format!("当前目标：{}", stage.goal) } else { format!("执行目标：{}", stage.goal) },
+            status: if stage.status == "done" { "已完成当前阶段".into() } else if stage.status == "in-progress" || stage.status == "active" { "正在执行当前阶段...".into() } else { "等待店长调度执行".into() },
+            status_subtitle: if stage.status == "done" { "本阶段结果已回写到工作台".into() } else if stage.status == "in-progress" || stage.status == "active" { format!("当前目标：{}", stage.goal) } else { format!("执行目标：{}", stage.goal) },
             status_tone: status_to_task_status(&stage.status).into(),
             inputs: vec![InspectorInput { label: "阶段目标".into(), value: stage.goal.clone() }, InspectorInput { label: "负责人".into(), value: agent_name(&agent_id).into() }, InspectorInput { label: "商家诉求".into(), value: plan.merchant_intent.clone() }],
             outputs: stage_outputs(stage),
-            tools: vec![InspectorTool { label: "任务拆解".into(), progress: if stage.status == "done" { 100 } else if stage.status == "active" { 72 } else { 0 }, active: stage.status == "active" }, InspectorTool { label: "结果回填".into(), progress: if stage.status == "done" { 100 } else if stage.status == "active" { 45 } else { 0 }, active: false }],
+            tools: vec![InspectorTool { label: "任务拆解".into(), progress: if stage.status == "done" { 100 } else if stage.status == "in-progress" || stage.status == "active" { 72 } else { 0 }, active: stage.status == "in-progress" || stage.status == "active" }, InspectorTool { label: "结果回填".into(), progress: if stage.status == "done" { 100 } else if stage.status == "in-progress" || stage.status == "active" { 45 } else { 0 }, active: false }],
         });
         previous_id = node_id;
     }
 
-    if !plan.risks.is_empty() {
-        let plan_completed = is_plan_completed(plan);
-        let condition_id = "risk-guard".to_string();
-        nodes.push(WorkflowNodeItem { id: condition_id.clone(), kind: "condition".into(), title: "风险校验".into(), subtitle: Some("店长 Agent".into()), description: Some("核查执行风险、库存、利润与售后依赖项".into()), agent_id: Some("manager".into()), status: Some(if plan_completed { "done" } else { "in-progress" }.into()), x: 230 + (plan.workflow_stages.len() as i32) * 280, y: 240 });
-        edges.push(WorkflowEdgeItem { id: format!("edge-{}-{}", previous_id, condition_id), source: previous_id, target: condition_id.clone(), source_handle: None, label: None, animated: true, stroke: "#f97316".into() });
-        inspectors.insert(condition_id.clone(), WorkflowInspector { title: "风险校验".into(), agent_name: "店长 Agent".into(), status: if plan_completed { "高风险项已完成复核".into() } else { "正在检查高风险项".into() }, status_subtitle: if plan_completed { format!("{} 条风险已纳入执行结果复盘", plan.risks.len()) } else { format!("{} 条风险待关注", plan.risks.len()) }, status_tone: if plan_completed { "done".into() } else { "in-progress".into() }, inputs: plan.risks.iter().take(3).enumerate().map(|(index, risk)| InspectorInput { label: format!("风险 {}", index + 1), value: risk.clone() }).collect(), outputs: if plan_completed { vec![InspectorInput { label: "复核结论".into(), value: "关键风险已回写到执行复盘，可继续跟踪库存、利润和售后反馈。".into() }] } else { Vec::new() }, tools: vec![InspectorTool { label: "策略审查".into(), progress: if plan_completed { 100 } else { 80 }, active: !plan_completed }, InspectorTool { label: "执行确认".into(), progress: if plan_completed { 100 } else { 30 }, active: false }] });
-    }
+    // 风险信息现在仅展示在右侧面板中，不再强制插入终节点
 
     WorkflowPayload { selected_node_id, nodes, edges, inspectors }
 }
@@ -287,7 +304,7 @@ pub fn build_execution_daily_brief(plan: &OperationPlan) -> String {
     let active_agent = plan
         .agent_assignments
         .iter()
-        .find(|assignment| assignment.status == "active")
+        .find(|assignment| assignment.status == "in-progress" || assignment.status == "active")
         .map(|assignment| assignment.agent_name.clone());
     let completed_checklist = plan.execution_checklist.iter().filter(|item| item.done).count();
     let risk_summary = if plan.risks.is_empty() {
@@ -363,7 +380,7 @@ pub async fn execute_workspace_flow_record(app: &tauri::AppHandle, request_id: &
             None
         }
     } else {
-        let active_index = plan.workflow_stages.iter().position(|stage| stage.status == "active");
+        let active_index = plan.workflow_stages.iter().position(|stage| stage.status == "in-progress" || stage.status == "active");
         active_index.or_else(|| {
             plan.workflow_stages
                 .iter()
@@ -393,30 +410,18 @@ pub async fn execute_workspace_flow_record(app: &tauri::AppHandle, request_id: &
             .find(|(_, stage)| stage.status != "done")
             .map(|(idx, _)| idx)
         {
-            plan.workflow_stages[next_index].status = "active".into();
+            plan.workflow_stages[next_index].status = "in-progress".into();
         }
 
         let plan_completed = is_plan_completed(&plan);
 
-        for assignment in &mut plan.agent_assignments {
-            let assignment_owner = normalize_agent_id(&assignment.agent_id);
-            let owned_stages = plan
-                .workflow_stages
-                .iter()
-                .filter(|stage| normalize_agent_id(&stage.owner) == assignment_owner)
-                .collect::<Vec<_>>();
-
-            assignment.status = if owned_stages.is_empty() {
-                assignment.status.clone()
-            } else if owned_stages.iter().all(|stage| stage.status == "done") {
-                "done".into()
-            } else if owned_stages.iter().any(|stage| stage.status == "active") {
-                "active".into()
-            } else if owned_stages.iter().any(|stage| stage.status == "done") {
-                "active".into()
-            } else {
-                "pending".into()
-            };
+        for (i, assignment) in plan.agent_assignments.iter_mut().enumerate() {
+            // 通过目标名称或者按同序列索引找到 1:1 对应的 stage
+            if let Some(matching_stage) = plan.workflow_stages.iter().find(|s| s.name == assignment.objective || s.name == assignment.deliverable) {
+                assignment.status = matching_stage.status.clone();
+            } else if let Some(matching_stage) = plan.workflow_stages.get(i) {
+                assignment.status = matching_stage.status.clone();
+            }
         }
 
         for item in &mut plan.execution_checklist {
@@ -445,7 +450,7 @@ pub async fn execute_workspace_flow_record(app: &tauri::AppHandle, request_id: &
 执行结果：店长已完成全部阶段调度，团队协作已全部落地。",
                 plan.manager_decision.trim()
             );
-        } else if let Some(next_stage) = plan.workflow_stages.iter().find(|stage| stage.status == "active") {
+        } else if let Some(next_stage) = plan.workflow_stages.iter().find(|stage| stage.status == "in-progress" || stage.status == "active") {
             plan.manager_decision = format!(
                 "{}
 最新进度：已完成“{}”，下一步由{}继续推进“{}”。",
@@ -481,21 +486,24 @@ fn build_system_prompt() -> String {
     }
 
     [
-        "你是 ShopGen 的店长系统 (Manager Agent)。你拥有 20 万 Token 的超大上下文视野，请充分利用这一优势进行深度规划。",
-        "你的任务是理解商家的电商需求，并将其拆解为多个子任务分发给“你自己（店长）”或团队中的“美工”。目前你的团队只有你（店长）和美工两个人可用。请不要分配任何其他角色。",
+        "你是 ShopGen 的店长系统 (Manager Agent)。你拥有 20 万 Token 的超大上下文视野。",
+        "你的核心目标是针对商家的诉求，生成一个【任务看板】与【执行流程图】完美对应的专业经营方案。",
+        "## 重要规则：",
+        "1. **看板与流程 1:1 对齐**：你生成的 `agentAssignments` 数组中的每一个任务，必须在 `workflowStages` 中有一个同名的阶段对应。看板有几个，流程就有几个。严禁出现看板 2 个、流程 7 个的情况。",
+        "2. **角色限制**：目前你的团队只有你（manager, 店长）和美工（designer）两个人可用。请不要分配任何其他角色。",
+        "3. **动态终点**：流程的终点应根据业务逻辑自然结束（如：完成详情页设计、完成库存备货等），不要千篇一律地以“风险校验”结尾。",
         "## 当前可用的团队成员：",
         &profile_summaries,
         "## 全量专业技能 (Skills) SOP 手册：",
         "请务必阅读以下每个技能的 SOP 细节，并在规划任务时精准指定 skillsRequired (ID)。",
         &skill_catalog,
-        "## 输出要求：",
-        "请务必返回一个合法的 JSON，结构详见下方定义。输出内容必须极其专业、深入、具备可执行性。",
+        "## 输出 JSON 结构要求：",
         "{",
         "  \"summary\": \"项目全局摘要\",",
         "  \"merchantIntent\": \"深度解读商家真实意图\",",
         "  \"managerDecision\": \"店长的核心经营建议与战略部署\",",
-        "  \"agentAssignments\": [{ \"agentId\": \"manager|designer\", \"agentName\": \"显示名称\", \"objective\": \"核心目标\", \"deliverable\": \"预期产出物\", \"skillsRequired\": [\"skill-id\"], \"status\": \"pending\" }],",
-        "  \"workflowStages\": [{ \"name\": \"阶段名\", \"owner\": \"manager|designer\", \"goal\": \"阶段目标\", \"action\": \"具体执行动作描述\", \"status\": \"pending\" }],",
+        "  \"agentAssignments\": [{ \"agentId\": \"manager|designer\", \"agentName\": \"显示名称\", \"objective\": \"核心目标\", \"deliverable\": \"预期产出物\", \"skillsRequired\": [\"skill-id\"], \"status\": \"todo\" }],",
+        "  \"workflowStages\": [{ \"name\": \"必须与 agentAssignments 中的 objective/deliverable 任务名一致\", \"owner\": \"manager|designer\", \"goal\": \"阶段目标\", \"action\": \"具体执行动作描述\", \"status\": \"todo\" }],",
         "  \"executionChecklist\": [{ \"title\": \"检查项\", \"owner\": \"manager|designer\", \"done\": false }],",
         "  \"risks\": [\"潜在风险预警\"],",
         "  \"dailyBrief\": \"今日核心工作摘要\"",
@@ -503,7 +511,6 @@ fn build_system_prompt() -> String {
         "注意：",
         "1. 务必结合 SOP 细节，在 agentAssignments 中精准对应技能 ID。",
         "2. 这是一个春季/夏季等季节性极强的电商场景，请在规划中体现时间紧迫感。",
-        "3. 严禁分配 'copywriter', 'operator', 'service' 等目前不存在的角色。如果发现有此类需求，请将其任务合理分配给店长个人督办或让美工从视觉角度提供方案。",
     ].join("\n")
 }
 

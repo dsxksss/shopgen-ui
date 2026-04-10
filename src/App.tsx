@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { Terminal } from 'lucide-react';
 import { clearWorkspaceView, deleteWorkspace, getRuntimeStatus, loadWorkspaceHistory, renameWorkspace, runWorkspaceFlow, switchWorkspace, togglePinWorkspace } from './lib/api';
-import type { RuntimeStatus, WorkspaceHistoryBundle } from './lib/types';
+import type { RuntimeStatus, WorkspaceHistoryBundle, WorkspaceView } from './lib/types';
 import { DEFAULT_PROMPTS, MenuKey, scenarioToMenu, menuToScenario, sortHistoryItems } from './lib/utils';
 import { KanbanBoard } from './components/Kanban';
 import { WorkflowView, WorkflowWizard } from './components/Workflow';
@@ -87,6 +87,14 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
     isAutoRunningRef.current = true;
     
     try {
+      // 乐观更新：在等待后端前立即在 UI 上展示“进行中”状态
+      const optimistic = JSON.parse(JSON.stringify(workspace)) as WorkspaceView;
+      const tIdx = optimistic.tasks.findIndex(t => t.id === taskId);
+      if (tIdx !== -1) {
+        optimistic.tasks[tIdx].status = 'in-progress';
+        setHistoryBundle((prev) => ({ ...prev, currentWorkspace: optimistic }));
+      }
+
       const nextWorkspace = await runWorkspaceFlow(workspace.plan.requestId, taskId);
       setHistoryBundle((prev) => ({ ...prev, currentWorkspace: nextWorkspace }));
     } finally {
@@ -111,6 +119,14 @@ function MainContent({ runtime, historyBundle, setHistoryBundle, scenario, setSc
     try {
       let current = workspace;
       while (isAutoRunningRef.current) {
+        // 乐观更新：找到第一个没完成的任务，将其设为进行中
+        const activeIdx = current.tasks.findIndex(t => t.status !== 'done');
+        if (activeIdx !== -1) {
+           const optimistic = JSON.parse(JSON.stringify(current)) as WorkspaceView;
+           optimistic.tasks[activeIdx].status = 'in-progress';
+           setHistoryBundle((prev) => ({ ...prev, currentWorkspace: optimistic }));
+        }
+
         const nextWorkspace = await runWorkspaceFlow(current.plan.requestId);
         setHistoryBundle((prev) => ({ ...prev, currentWorkspace: nextWorkspace }));
         setView('workflow');
@@ -170,16 +186,18 @@ export default function App() {
             setScenario(bundle.currentWorkspace.plan.scenario);
             setDraftPrompt(bundle.currentWorkspace.plan.merchantIntent);
           }
-          // 发送初始化成功日志
-          import('./lib/api').then(({ subscribeToLogs }) => {
-            // 这里我们不需要subscribe，只是为了演示，实际上emit_log是在Rust里调用的
-            // 我们可以在这里调用一个Rust的ping方法（如果实现了）
-            import('@tauri-apps/api/core').then(({ invoke }) => {
-              invoke('get_runtime_status').then(() => {
-                // 这个已经调用过了，我们只需要在Debug里显示
-              });
+          // 自动打开调试面板
+          import('@tauri-apps/api/webviewWindow').then(({ WebviewWindow }) => {
+            const w = new WebviewWindow('debug-panel', {
+              url: '/?window=debug',
+              title: 'ShopGen Backend Session',
+              width: 800,
+              height: 600,
+              resizable: true,
+              center: true,
             });
-          });
+            w.once('tauri://error', () => {});
+          }).catch(() => {});
         }
       } catch (error) {
         if (!cancelled) {

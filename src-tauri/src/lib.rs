@@ -49,6 +49,8 @@ pub fn run() {
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_title("ShopGen Operations Center");
+                #[cfg(debug_assertions)]
+                window.open_devtools();
             }
             Ok(())
         })

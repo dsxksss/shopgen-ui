@@ -15,12 +15,12 @@ pub async fn request_openrouter_image(app: &tauri::AppHandle, prompt: &str) -> R
         .ok_or(ApiError::MissingEnv("OPENROUTER_API_KEY"))?;
 
     let body = json!({
-        "model": "google/gemini-2.5-flash-image-preview",
+        "model": "sourceful/riverflow-v2-pro",
         "messages": [{
             "role": "user",
             "content": [{ "type": "text", "text": prompt }]
         }],
-        "modalities": ["image", "text"]
+        "modalities": ["image"]
     });
 
     let response = Client::new()
@@ -44,6 +44,12 @@ pub async fn request_openrouter_image(app: &tauri::AppHandle, prompt: &str) -> R
         .and_then(|images| images.first())
         .and_then(|image| image["image_url"]["url"].as_str())
         .map(str::to_owned)
+        .or_else(|| {
+            // 回退方案：如果以文本/Base64形式直接返回在了 content 里
+            payload["choices"][0]["message"]["content"]
+                .as_str()
+                .map(str::to_owned)
+        })
         .ok_or_else(|| ApiError::RequestFailed("OpenRouter did not return an image URL".into()))
 }
 
@@ -70,7 +76,7 @@ pub async fn request_stage_execution(
     println!(">>> [{}] 正在组装 Prompt，已加载 {} 个技能 SOP...", agent_title, skills.len());
 
     let system_prompt = format!(
-        "You are the {agent_title} agent in ShopGen. Execute the assigned workflow stage based on the merchant intent and following the SOPs provided in your skills. Return only the final deliverable in Markdown. If a visual asset is needed, insert [GEN_IMAGE: detailed English image prompt].{skill_instructions}"
+        "You are the {agent_title} agent in ShopGen. Execute the assigned workflow stage based on the merchant intent and following the SOPs provided in your skills. Return only the final deliverable in Markdown. If a visual asset is needed, insert [IMAGE_PROMPT: detailed English image prompt].{skill_instructions}"
     );
 
     crate::emit_log(app, "info", &format!("[{}] 开始思考任务「{}」...", agent_title, stage.name));
@@ -97,6 +103,7 @@ pub async fn request_stage_execution(
     let body = json!({
         "model": model,
         "max_tokens": 2000,
+        "stream": true,
         "system": system_prompt,
         "messages": [{
             "role": "user",
@@ -120,27 +127,52 @@ pub async fn request_stage_execution(
         crate::emit_log(app, "error", &format!("[{}] 思考失败: {}", agent_title, err_msg));
         return Err(ApiError::RequestFailed(err_msg));
     }
-    println!("<<< [{}] 收到 API 响应，正在解析内容...", agent_title);
+    println!("<<< [{}] 收到流式响应，正在逐块解析...", agent_title);
 
-    let response_body: Value = response.json().await.map_err(|_| ApiError::ParseFailed)?;
-    
-    // 智能提取：兼容 MiniMax/Anthropic 混合结构
-    let mut text = if let Some(content_array) = response_body["content"].as_array() {
-        content_array.iter()
-            .find(|item: &&Value| item["type"] == "text")
-            .and_then(|item| item["text"].as_str())
-            .ok_or(ApiError::ParseFailed)?
-            .to_string()
-    } else {
-        response_body["choices"][0]["message"]["content"].as_str()
-            .or_else(|| response_body["choices"][0]["text"].as_str())
-            .ok_or(ApiError::ParseFailed)?
-            .to_string()
-    };
+    use futures::StreamExt;
+
+    let mut stream = response.bytes_stream();
+    let mut text = String::new();
+    let mut line_buffer = String::new();
+
+    while let Some(item) = stream.next().await {
+        let chunk = item.map_err(|e: reqwest::Error| ApiError::RequestFailed(e.to_string()))?;
+        let raw = String::from_utf8_lossy(&chunk);
+        line_buffer.push_str(&raw);
+
+        while let Some(pos) = line_buffer.find('\n') {
+            let line = line_buffer[..pos].trim().to_string();
+            line_buffer.drain(..pos + 1);
+
+            if line.starts_with("data: ") {
+                let data = line.trim_start_matches("data: ");
+                if data == "[DONE]" || data.is_empty() { continue; }
+
+                if let Ok(json) = serde_json::from_str::<Value>(data) {
+                    if let Some(delta) = json.get("delta") {
+                        if let Some(txt) = delta.get("text").and_then(Value::as_str) {
+                            text.push_str(txt);
+                        }
+                    } else if let Some(choices) = json.get("choices").and_then(|c| c.as_array()) {
+                        if !choices.is_empty() {
+                            if let Some(txt) = choices[0]["delta"].get("content").and_then(Value::as_str) {
+                                text.push_str(txt);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if text.is_empty() {
+        eprintln!("!!! [{}] 流式接收完成但内容为空", agent_title);
+        return Err(ApiError::EmptyResponse);
+    }
 
     crate::emit_log(app, "success", &format!("[{}] 思考完成，正在解析产物...", agent_title));
 
-    let image_tag_re = Regex::new(r"\[GEN_IMAGE:\s*([^\]]+)\]").map_err(|e| ApiError::RequestFailed(e.to_string()))?;
+    let image_tag_re = Regex::new(r"\[(?:IMAGE_PROMPT|GEN_IMAGE):\s*([^\]]+)\]").map_err(|e| ApiError::RequestFailed(e.to_string()))?;
     let replacements = image_tag_re
         .captures_iter(&text)
         .filter_map(|cap| {
@@ -155,7 +187,11 @@ pub async fn request_stage_execution(
         match request_openrouter_image(app, prompt).await {
             Ok(image_url) => {
                 crate::emit_log(app, "success", &format!("[{}] 插图生成成功", agent_title));
-                let replacement = format!("![{}]({})", prompt, image_url);
+                let replacement = if image_url.contains("![") {
+                    image_url.clone() // 如果模型已经自己包了 Markdown
+                } else {
+                    format!("![{}]({})", prompt, image_url)
+                };
                 text = text.replace(tag, &replacement);
             }
             Err(err) => {
