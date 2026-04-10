@@ -33,9 +33,61 @@ import type { WorkflowPayload, WorkspaceView, RuntimeStatus, WizardPayload } fro
 import { generateWorkspaceView } from '../lib/api';
 import { findPreferredNodeId, buildReactFlowPayload, normalizeAgentId, AGENTS } from '../lib/utils';
 
-export const AgentNode = ({ data }: any) => <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 w-[260px] group hover:border-purple-400 hover:shadow-md transition-all relative"><Handle type="target" position={Position.Left} className="w-2.5 h-2.5 !bg-slate-300 border-2 border-white" /><div className="flex items-start justify-between mb-3"><div className="flex items-center gap-3"><div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${data.agentColor} shadow-sm`}>{data.icon}</div><div><h3 className="text-sm font-bold text-slate-900 leading-tight">{data.title}</h3><p className="text-xs font-medium text-slate-500">{data.agentName}</p></div></div></div><div className="bg-slate-50 rounded-lg p-2.5 border border-slate-100"><p className="text-xs text-slate-600 leading-relaxed">{data.description}</p></div>{data.status === 'done' && <div className="absolute -top-2.5 -right-2.5 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm"><Check className="w-3.5 h-3.5 text-white" /></div>}{data.status === 'in-progress' && <div className="absolute -top-2.5 -right-2.5 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center border-2 border-white shadow-sm"><Loader2 className="w-3.5 h-3.5 text-white animate-spin" /></div>}<Handle type="source" position={Position.Right} className="w-2.5 h-2.5 !bg-slate-300 border-2 border-white" /></div>;
-export const TriggerNode = ({ data }: any) => <div className="bg-white rounded-xl shadow-sm border border-purple-200 p-4 w-[220px] relative"><div className="flex items-center gap-2 mb-2 text-purple-600"><Play className="w-4 h-4" /><span className="text-xs font-bold uppercase tracking-wider">开始节点</span></div><h3 className="text-sm font-semibold text-slate-900">{data.title}</h3><Handle type="source" position={Position.Right} className="w-2.5 h-2.5 !bg-purple-400 border-2 border-white" /></div>;
-export const ConditionNode = ({ data }: any) => <div className="bg-white rounded-xl shadow-sm border border-orange-200 p-4 w-[200px] relative"><Handle type="target" position={Position.Left} className="w-2.5 h-2.5 !bg-orange-300 border-2 border-white" /><div className="flex items-center gap-2 mb-2 text-orange-600"><GitBranch className="w-4 h-4" /><span className="text-xs font-bold uppercase tracking-wider">条件判断</span></div><h3 className="text-sm font-semibold text-slate-900">{data.title}</h3><Handle type="source" position={Position.Right} id="true" style={{ top: '30%' }} className="w-2.5 h-2.5 !bg-green-400 border-2 border-white" /><Handle type="source" position={Position.Right} id="false" style={{ top: '70%' }} className="w-2.5 h-2.5 !bg-red-400 border-2 border-white" /></div>;
+export const AgentNode = ({ data }: any) => (
+  <div className="bg-[var(--bg-card)] rounded-xl shadow-lg border border-[var(--border-main)] p-4 w-[260px] group hover:border-purple-400 hover:shadow-2xl hover:shadow-purple-500/10 transition-all relative">
+    <Handle type="target" position={Position.Left} className="w-2.5 h-2.5 !bg-[var(--text-muted)] border-2 border-[var(--bg-card)]" />
+    <div className="flex items-start justify-between mb-3">
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${data.agentColor} shadow-lg shadow-${data.agentColor}/10`}>
+          {data.icon}
+        </div>
+        <div>
+          <h3 className="text-sm font-black text-[var(--text-main)] leading-tight">{data.title}</h3>
+          <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">{data.agentName}</p>
+        </div>
+      </div>
+    </div>
+    <div className="bg-[var(--bg-app)] rounded-lg p-2.5 border border-[var(--border-soft)]">
+      <p className="text-xs text-[var(--text-muted)] leading-relaxed line-clamp-2">{data.description}</p>
+    </div>
+    {data.status === 'done' && (
+      <div className="absolute -top-2.5 -right-2.5 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] shadow-lg animate-in zoom-in">
+        <Check className="w-3.5 h-3.5 text-white" />
+      </div>
+    )}
+    {data.status === 'in-progress' && (
+      <div className="absolute -top-2.5 -right-2.5 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center border-2 border-[var(--bg-card)] shadow-lg">
+        <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+      </div>
+    )}
+    <Handle type="source" position={Position.Right} className="w-2.5 h-2.5 !bg-[var(--text-muted)] border-2 border-[var(--bg-card)]" />
+  </div>
+);
+
+export const TriggerNode = ({ data }: any) => (
+  <div className="bg-[var(--bg-card)] rounded-xl shadow-lg border border-purple-500/30 p-4 w-[220px] relative">
+    <div className="flex items-center gap-2 mb-2 text-purple-500">
+      <Play className="w-4 h-4 fill-current" />
+      <span className="text-[10px] font-black uppercase tracking-widest">Initialization</span>
+    </div>
+    <h3 className="text-sm font-bold text-[var(--text-main)]">{data.title}</h3>
+    <Handle type="source" position={Position.Right} className="w-2.5 h-2.5 !bg-purple-500 border-2 border-[var(--bg-card)]" />
+  </div>
+);
+
+export const ConditionNode = ({ data }: any) => (
+  <div className="bg-[var(--bg-card)] rounded-xl shadow-lg border border-orange-500/30 p-4 w-[200px] relative">
+    <Handle type="target" position={Position.Left} className="w-2.5 h-2.5 !bg-orange-400 border-2 border-[var(--bg-card)]" />
+    <div className="flex items-center gap-2 mb-2 text-orange-400">
+      <GitBranch className="w-4 h-4" />
+      <span className="text-[10px] font-black uppercase tracking-widest">Logic Hub</span>
+    </div>
+    <h3 className="text-sm font-bold text-[var(--text-main)]">{data.title}</h3>
+    <Handle type="source" position={Position.Right} id="true" style={{ top: '30%' }} className="w-2 h-2 !bg-green-500 border-2 border-[var(--bg-card)]" />
+    <Handle type="source" position={Position.Right} id="false" style={{ top: '70%' }} className="w-2 h-2 !bg-red-500 border-2 border-[var(--bg-card)]" />
+  </div>
+);
+
 export const nodeTypes = { agentNode: AgentNode, triggerNode: TriggerNode, conditionNode: ConditionNode };
 
 export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload | null; hasPlan: boolean }) {
@@ -43,40 +95,137 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
   const [nodes, setNodes, onNodesChange] = useNodesState(reactFlowPayload.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(reactFlowPayload.edges);
   const [selectedNodeId, setSelectedNodeId] = useState(findPreferredNodeId(workflow));
-  useEffect(() => { setNodes(reactFlowPayload.nodes); setEdges(reactFlowPayload.edges); setSelectedNodeId(findPreferredNodeId(workflow)); }, [reactFlowPayload, workflow, setEdges, setNodes]);
-  const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } } as Edge, eds)), [setEdges]);
-  const inspector = (workflow?.inspectors ?? {})[selectedNodeId] ?? { title: '等待流程生成', agentName: '店长 Agent', status: '当前还没有真实流程节点', statusSubtitle: '请先通过 AI 构建流程生成真实任务。', statusTone: 'todo' as const, inputs: [{ label: '状态', value: '未生成' }, { label: '说明', value: '当前页面不展示任何默认流程 mock。' }], outputs: [], tools: [{ label: 'Agent 调度', progress: 0, active: false }, { label: '任务编排', progress: 0, active: false }] };
-  return <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="flex-1 w-full h-full relative bg-[#fafafa]">
-<ReactFlow nodes={nodes} edges={edges} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect} onNodeClick={(_, node) => setSelectedNodeId(node.id)} nodeTypes={nodeTypes} fitView attributionPosition="bottom-right"><Background color="#e2e8f0" gap={16} size={1} /><Controls className="bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden" /><MiniMap nodeColor={(node) => node.type === 'triggerNode' ? '#c084fc' : node.type === 'conditionNode' ? '#fdba74' : '#94a3b8'} maskColor="rgba(248, 250, 252, 0.7)" className="bg-white border border-slate-200 shadow-sm rounded-xl" /></ReactFlow>
-{!hasPlan && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="bg-white/95 backdrop-blur rounded-2xl border border-slate-200 px-6 py-4 shadow-sm text-sm text-slate-500">暂无真实流程，先通过 AI 构建流程生成任务。</div></div>}
-<div className="absolute top-4 right-4 w-[400px] bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col h-[calc(100%-2rem)] z-10 overflow-hidden"><div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50"><div className="flex items-center gap-2"><div className={`w-8 h-8 rounded-lg flex items-center justify-center ${inspector.statusTone === 'done' ? 'bg-green-100 text-green-600' : inspector.statusTone === 'in-progress' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}><ImageIcon className="w-4 h-4" /></div><div><h3 className="text-sm font-bold text-slate-900">{inspector.title}</h3><p className="text-xs text-slate-500">{inspector.agentName}</p></div></div></div><div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6"><div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">执行状态</label><div className={`${inspector.statusTone === 'done' ? 'bg-green-50 border-green-200' : inspector.statusTone === 'in-progress' ? 'bg-orange-50 border-orange-200' : 'bg-slate-50 border-slate-200'} border rounded-lg p-3 flex items-center gap-3`}>{inspector.statusTone === 'done' ? <Check className="w-5 h-5 text-green-500" /> : inspector.statusTone === 'in-progress' ? <Loader2 className="w-5 h-5 text-orange-500 animate-spin" /> : <ShieldAlert className="w-5 h-5 text-slate-400" />}<div><p className={`text-sm font-semibold ${inspector.statusTone === 'done' ? 'text-green-700' : inspector.statusTone === 'in-progress' ? 'text-orange-700' : 'text-slate-700'}`}>{inspector.status}</p><p className={`text-xs ${inspector.statusTone === 'done' ? 'text-green-600/80' : inspector.statusTone === 'in-progress' ? 'text-orange-600/80' : 'text-slate-500'}`}>{inspector.statusSubtitle}</p></div></div></div>
-<div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">输入参数</label><div className="space-y-2">{inspector.inputs.map((item) => <div key={item.label} className="bg-slate-50 border border-slate-200 rounded-lg p-2.5"><span className="text-xs text-slate-500 block mb-1">{item.label}</span><span className="text-sm font-medium text-slate-900">{item.value}</span></div>)}</div></div>
 
-{inspector.outputs && inspector.outputs.length > 0 && (
-  <div>
-    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">输出结果</label>
-    <div className="space-y-3">
-      {inspector.outputs.map((item, idx) => (
-        <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-hidden">
-          <span className="text-xs font-bold text-slate-500 block mb-3 border-b border-slate-200 pb-2">{item.label}</span>
-          <div className="prose prose-sm prose-slate max-w-none prose-img:rounded-xl prose-img:shadow-md prose-img:border prose-img:border-slate-200 prose-img:w-full prose-headings:font-bold prose-a:text-purple-600 text-sm">
-            <ReactMarkdown 
-              remarkPlugins={[remarkGfm]}
-              urlTransform={(url) => url.startsWith('shopgen-image://') ? url : url.startsWith('data:') ? url : defaultUrlTransform(url)}
-              components={{
-                 img: ({ node, ...props }: any) => <AsyncImage {...props} />
-              }}
-            >
-              {String(item.value).replace(/!\[([^\]]*)\]\(data:image\/[^;]+;base64,[^\)]+\)/g, '⚠️ *由于旧版图片过大导致卡顿，历史大图已被系统折叠，请运行新任务以体验极速生成组件！*')}
-            </ReactMarkdown>
+  useEffect(() => { 
+    setNodes(reactFlowPayload.nodes); 
+    setEdges(reactFlowPayload.edges); 
+    setSelectedNodeId(findPreferredNodeId(workflow)); 
+  }, [reactFlowPayload, workflow, setEdges, setNodes]);
+
+  const onConnect = useCallback((params: Connection | Edge) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#94a3b8', strokeWidth: 2 } } as Edge, eds)), [setEdges]);
+
+  const inspector = (workflow?.inspectors ?? {})[selectedNodeId] ?? { 
+    title: 'Ready for Generation', 
+    agentName: 'Shop Manager Agent', 
+    status: 'Waiting for AI Workflow...', 
+    statusSubtitle: 'Generate your business process first.', 
+    statusTone: 'todo' as const, 
+    inputs: [{ label: 'Status', value: 'Draft' }], 
+    outputs: [], 
+    tools: []
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }} className="flex-1 w-full h-full relative bg-[var(--bg-app)]">
+      <ReactFlow 
+        nodes={nodes} 
+        edges={edges} 
+        onNodesChange={onNodesChange} 
+        onEdgesChange={onEdgesChange} 
+        onConnect={onConnect} 
+        onNodeClick={(_, node) => setSelectedNodeId(node.id)} 
+        nodeTypes={nodeTypes} 
+        fitView 
+        colorMode={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+      >
+        <Background color="var(--border-main)" gap={16} size={1} />
+        <Controls className="bg-[var(--bg-card)] border border-[var(--border-main)] shadow-xl rounded-2xl overflow-hidden [&_button]:bg-[var(--bg-card)] [&_button]:border-[var(--border-soft)] [&_svg]:fill-[var(--text-main)]" />
+        <MiniMap 
+          nodeColor={(node) => node.type === 'triggerNode' ? '#c084fc' : node.type === 'conditionNode' ? '#fdba74' : '#94a3b8'} 
+          maskColor="var(--header-glass)" 
+          className="bg-[var(--bg-card)] border border-[var(--border-main)] shadow-xl rounded-2xl overflow-hidden" 
+        />
+      </ReactFlow>
+
+      {!hasPlan && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+          <div className="bg-[var(--bg-card)]/80 backdrop-blur-xl rounded-3xl border border-[var(--border-main)] px-8 py-5 shadow-2xl text-base font-black text-[var(--text-muted)] italic tracking-tight">
+            System Waiting for AI Task Decomposition...
           </div>
         </div>
-      ))}
-    </div>
-  </div>
-)}
+      )}
 
-<div><label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">AI 技能调用</label><div className="border border-slate-200 rounded-lg overflow-hidden">{inspector.tools.map((tool, index: number) => <div key={tool.label} className={`p-3 flex items-center justify-between ${index < inspector.tools.length - 1 ? 'border-b border-slate-100' : ''} ${tool.active ? 'bg-slate-50' : 'bg-white'}`}><div className="flex items-center gap-2"><div className={`w-2 h-2 rounded-full ${tool.progress === 100 ? 'bg-green-500' : tool.active ? 'bg-orange-500 animate-pulse' : 'bg-slate-300'}`}></div><span className="text-sm font-medium text-slate-700">{tool.label}</span></div><span className="text-xs text-slate-400">{tool.progress}%</span></div>)}</div></div></div></div></motion.div>;
+      <div className="absolute top-4 right-4 w-[420px] bg-[var(--bg-card)] rounded-[40px] shadow-2xl border border-[var(--border-main)] flex flex-col h-[calc(100%-2rem)] z-10 overflow-hidden">
+        <div className="p-8 border-b border-[var(--border-soft)] flex items-center justify-between bg-[var(--bg-sidebar)]">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${inspector.statusTone === 'done' ? 'bg-green-500/10 text-green-500' : inspector.statusTone === 'in-progress' ? 'bg-orange-500/10 text-orange-500' : 'bg-[var(--border-soft)] text-[var(--text-muted)]'}`}>
+              <ImageIcon className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-black text-[var(--text-main)] tracking-tight">{inspector.title}</h3>
+              <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">{inspector.agentName}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-8 flex flex-col gap-8 no-scrollbar">
+          <div>
+            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">Node Context</label>
+            <div className={`border rounded-[24px] p-5 flex items-center gap-4 ${inspector.statusTone === 'done' ? 'bg-green-500/10 border-green-500/20' : inspector.statusTone === 'in-progress' ? 'bg-orange-500/10 border-orange-500/20' : 'bg-[var(--bg-app)] border-[var(--border-main)]'}`}>
+              {inspector.statusTone === 'done' ? <CheckCircle2 className="w-6 h-6 text-green-500" /> : inspector.statusTone === 'in-progress' ? <Loader2 className="w-6 h-6 text-orange-500 animate-spin" /> : <ShieldAlert className="w-6 h-6 text-[var(--text-muted)]" />}
+              <div>
+                <p className={`text-base font-black ${inspector.statusTone === 'done' ? 'text-green-500' : inspector.statusTone === 'in-progress' ? 'text-orange-500' : 'text-[var(--text-main)]'}`}>{inspector.status}</p>
+                <p className="text-xs font-bold text-[var(--text-muted)] mt-0.5">{inspector.statusSubtitle}</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">Operational Inputs</label>
+            <div className="space-y-3">
+              {inspector.inputs.map((item) => (
+                <div key={item.label} className="bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl p-4">
+                  <span className="text-[10px] font-black text-[var(--text-muted)] uppercase block mb-1 tracking-widest">{item.label}</span>
+                  <span className="text-sm font-bold text-[var(--text-main)]">{item.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {inspector.outputs && inspector.outputs.length > 0 && (
+            <div>
+              <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">Artifact Outputs</label>
+              <div className="space-y-4">
+                {inspector.outputs.map((item, idx) => (
+                  <div key={idx} className="bg-[var(--bg-sidebar)] border border-[var(--border-main)] rounded-[32px] p-6 shadow-sm overflow-hidden">
+                    <span className="text-[10px] font-black text-[var(--text-muted)] block mb-4 border-b border-[var(--border-soft)] pb-3 uppercase tracking-widest">{item.label}</span>
+                    <div className="prose prose-sm prose-slate max-w-none prose-img:rounded-2xl prose-img:shadow-xl prose-img:border prose-img:border-[var(--bg-card)] prose-img:w-full prose-headings:text-[var(--text-main)] text-[var(--text-main)]/90 text-sm font-medium leading-relaxed">
+                      <ReactMarkdown 
+                        remarkPlugins={[remarkGfm]}
+                        urlTransform={(url) => url.startsWith('shopgen-image://') ? url : url.startsWith('data:') ? url : defaultUrlTransform(url)}
+                        components={{
+                           img: ({ node, ...props }: any) => <AsyncImage {...props} />
+                        }}
+                      >
+                        {String(item.value)}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {inspector.tools && inspector.tools.length > 0 && (
+            <div>
+              <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] mb-3 block">Service Orchestration</label>
+              <div className="border border-[var(--border-main)] rounded-[24px] overflow-hidden bg-[var(--bg-app)]">
+                {inspector.tools.map((tool, index: number) => (
+                  <div key={tool.label} className={`p-4 flex items-center justify-between ${index < inspector.tools.length - 1 ? 'border-b border-[var(--border-soft)]' : ''} ${tool.active ? 'bg-[var(--border-soft)]' : ''}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2.5 h-2.5 rounded-full ${tool.progress === 100 ? 'bg-green-500' : tool.active ? 'bg-orange-500 animate-pulse' : 'bg-[var(--border-main)]'}`} />
+                      <span className="text-sm font-bold text-[var(--text-main)]">{tool.label}</span>
+                    </div>
+                    <span className="text-[10px] font-black text-[var(--text-muted)]">{tool.progress}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
 export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initialPrompt, planningCache, setPlanningCache }: { onClose: () => void; onComplete: (view: WorkspaceView) => void; scenario: string; runtime: RuntimeStatus | null; initialPrompt: string; planningCache: any; setPlanningCache: (cache: any) => void }) {
@@ -102,10 +251,10 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
     }
   }, [initialPrompt, planningCache]);
 
-  // 同步状态到全局缓存
   useEffect(() => {
     setPlanningCache({ step, prompt, isPlanning: loading, plan: workspace, thought });
   }, [step, prompt, loading, workspace, thought, setPlanningCache]);
+
   const wizard: WizardPayload | null = workspace?.wizard ?? null;
 
   async function startGenerate() {
@@ -117,31 +266,134 @@ export function WorkflowWizard({ onClose, onComplete, scenario, runtime, initial
       const result = await generateWorkspaceView(prompt.trim(), scenario);
       setWorkspace(result);
       setStep(3);
-      // 深度同步到父组件，确保即使关闭后再打开也能拿到结果
-      setPlanningCache({ step: 3, prompt: prompt.trim(), isPlanning: false, plan: result });
     } catch (err: unknown) {
-      console.error('[ShopGen] Generate failed:', err);
       const msg = typeof err === 'string' ? err : err instanceof Error ? err.message : JSON.stringify(err);
-      setError(msg || '生成流程失败（未知错误）');
+      setError(msg || 'Decomposition Failed');
       setStep(1);
-      setPlanningCache({ step: 1, prompt: prompt.trim(), isPlanning: false, plan: null });
     } finally {
       setLoading(false);
     }
   }
 
-  const StepIcon = ({ current, stepNum, icon: Icon }: any) => current > stepNum ? <div className="w-10 h-10 rounded-full bg-green-100 text-green-500 flex items-center justify-center z-10 relative"><Check className="w-5 h-5" /></div> : current === stepNum ? <div className="w-10 h-10 rounded-full border-2 border-dashed border-green-400 flex items-center justify-center p-1 z-10 relative bg-white"><div className="w-full h-full bg-green-400 rounded-full flex items-center justify-center text-white"><Icon className="w-4 h-4" /></div></div> : <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center z-10 relative border-4 border-white"><Icon className="w-5 h-5" /></div>;
+  const StepIcon = ({ current, stepNum, icon: Icon }: any) => (
+    current > stepNum 
+      ? <div className="w-12 h-12 rounded-full bg-green-500 text-white flex items-center justify-center z-10 relative ring-4 ring-[var(--bg-card)] shadow-lg"><Check className="w-6 h-6" /></div> 
+      : current === stepNum 
+        ? <div className="w-12 h-12 rounded-full bg-[var(--accent)] text-[var(--bg-card)] flex items-center justify-center z-10 relative ring-4 ring-[var(--bg-card)] shadow-2xl animate-in zoom-in"><Icon className="w-5 h-5" /></div> 
+        : <div className="w-12 h-12 rounded-full bg-[var(--bg-app)] text-[var(--text-muted)] flex items-center justify-center z-10 relative border-2 border-[var(--border-main)]"><Icon className="w-5 h-5" /></div>
+  );
 
-  return <div className="absolute inset-0 bg-slate-900/20 backdrop-blur-sm z-50 flex items-center justify-center p-8"><motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }} className="bg-white rounded-3xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col"><div className="p-10 pb-8"><div className="flex items-center justify-between px-8 relative"><div className="absolute top-5 left-16 right-16 h-0.5 bg-slate-100 z-0"><div className="h-full bg-green-400 transition-all duration-500" style={{ width: `${((step - 1) / 3) * 100}%` }}></div></div><div className="flex flex-col items-center gap-3"><StepIcon current={step} stepNum={1} icon={MessageSquare} /><span className="text-sm font-bold text-slate-900">需求描述</span></div><div className="flex flex-col items-center gap-3"><StepIcon current={step} stepNum={2} icon={Wand2} /><span className="text-sm font-bold text-slate-900">任务拆解</span></div><div className="flex flex-col items-center gap-3"><StepIcon current={step} stepNum={3} icon={Users} /><span className="text-sm font-bold text-slate-900">团队配置</span></div><div className="flex flex-col items-center gap-3"><StepIcon current={step} stepNum={4} icon={CheckCircle2} /><span className="text-sm font-bold text-slate-900">确认执行</span></div></div></div><div className="px-8 pb-8"><div className="grid grid-cols-4 gap-4 bg-slate-50/80 p-4 rounded-2xl"><div className={`flex flex-col p-5 rounded-2xl h-[340px] transition-all duration-300 ${step === 1 ? 'border-2 border-green-400 bg-white shadow-md scale-[1.02]' : step > 1 ? 'bg-white shadow-sm border border-slate-200' : 'border-2 border-dashed border-slate-200 bg-transparent'}`}>{step === 1 ? <><h3 className="font-bold text-slate-900 mb-3 text-sm shrink-0">输入需求</h3><textarea className="flex-1 min-h-0 bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:border-green-400 focus:ring-1 focus:ring-green-400 transition-all" placeholder="例如：帮我策划一场春季上新活动..." value={prompt} onChange={(e) => setPrompt(e.target.value)} autoFocus />{error && <p className="mt-2 text-xs text-red-500 shrink-0">{error}</p>}<button onClick={startGenerate} disabled={!prompt.trim() || !runtime?.configured || loading} className="mt-3 shrink-0 w-full py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium disabled:opacity-50 hover:bg-slate-800 transition-colors">下一步</button></> : <><h3 className="font-bold text-slate-900 mb-3 text-sm shrink-0">需求详情</h3><div className="flex-1 min-h-0 text-sm text-slate-600 overflow-y-auto relative pr-1 leading-relaxed"><p>{wizard?.prompt ?? prompt}</p></div><button onClick={() => { setStep(1); setLoading(false); setError(''); setWorkspace(null); setThought(''); }} className="mt-3 shrink-0 w-full py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 transition-colors">修改需求</button></>}</div><div className={`flex flex-col p-5 rounded-2xl h-[340px] transition-all duration-300 ${step === 2 ? 'border-2 border-green-400 bg-white shadow-md scale-[1.02]' : step > 2 ? 'bg-white shadow-sm border border-slate-200' : 'border-2 border-dashed border-slate-200 bg-transparent'}`}>{step === 2 ? <div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center"><div className="relative mb-4"><div className="w-12 h-12 border-4 border-green-100 border-t-green-500 rounded-full animate-spin"></div><Wand2 className="w-5 h-5 text-green-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" /></div><p className="text-sm font-bold text-slate-900">AI 正在拆解任务...</p>
-<div className="mt-4 w-full flex-1 min-h-0 bg-slate-900/5 rounded-xl p-4 overflow-y-auto font-mono text-[10px] text-slate-500 leading-relaxed border border-slate-100 italic">
-  {thought || "店长正在构思中..."}
-  <div className="inline-block w-1.5 h-3 bg-green-400 ml-1 animate-pulse" />
-</div>
-<p className="text-[10px] text-slate-400 mt-2">后端正在实时同步思考内容...</p>
-</div> : wizard && <><h3 className="font-bold text-slate-900 mb-3 text-sm shrink-0">拆解结果</h3><div className="flex-1 min-h-0 overflow-y-auto pr-1"><ul className="text-sm text-slate-600 space-y-3">{wizard.breakdown.slice(0, 5).map((item) => <li key={item} className="flex items-start gap-2"><Check className="w-4 h-4 text-green-500 shrink-0 mt-0.5" /> <span className="leading-snug">{item}</span></li>)}</ul></div>                    <button 
-                      onClick={() => alert(`任务拆解详情:\n${wizard.breakdown.join('\n')}`)}
-                      className="mt-3 shrink-0 w-full py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 transition-colors"
-                    >
-                      查看详情
-                    </button></>}</div><div className={`flex flex-col p-5 rounded-2xl h-[340px] transition-all duration-300 ${step === 3 ? 'border-2 border-green-400 bg-white shadow-md scale-[1.02]' : step > 3 ? 'bg-white shadow-sm border border-slate-200' : 'border-2 border-dashed border-slate-200 bg-transparent'}`}>{step === 3 && wizard ? <><h3 className="font-bold text-slate-900 mb-3 text-sm shrink-0">分配团队</h3><div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">{wizard.teamObjectives.slice(0, 5).map((assignment) => { const agent = AGENTS[normalizeAgentId(assignment.agentId)]; return <div key={assignment.agentId + assignment.objective} className="flex items-start gap-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100"><div className={`shrink-0 w-8 h-8 ${agent.color} rounded-lg text-white flex items-center justify-center text-sm font-bold shadow-sm`}>{agent.initial}</div><div className="min-w-0"><p className="text-sm font-bold text-slate-900 leading-none mb-1">{assignment.agentName}</p><p className="text-[10px] text-slate-500 leading-relaxed truncate">{assignment.objective}</p></div></div>; })}</div><button onClick={() => setStep(4)} className="mt-3 shrink-0 w-full py-2.5 bg-slate-900 text-white rounded-xl text-sm font-medium hover:bg-slate-800 transition-colors">确认团队</button></> : step > 3 && wizard && <><h3 className="font-bold text-slate-900 mb-3 text-sm shrink-0">团队配置</h3><div className="flex-1 min-h-0 flex flex-wrap gap-2 content-start pt-4">{wizard.teamAgentIds.slice(0, 6).map((agentId, index) => { const agent = AGENTS[normalizeAgentId(agentId)]; return <div key={agentId + index} className={`w-12 h-12 ${agent.color} rounded-full text-white flex items-center justify-center text-base font-bold border-2 border-white shadow-md ${index > 0 ? '-ml-5' : ''}`}>{agent.initial}</div>; })}<div className="w-full mt-4 bg-green-50 p-3 rounded-xl border border-green-100"><p className="text-xs text-green-700 font-medium text-center">共 {wizard.teamAgentIds.length} 名专家已就绪</p></div></div><button onClick={() => setStep(3)} className="mt-3 shrink-0 w-full py-2 bg-slate-100 text-slate-700 rounded-xl text-sm font-medium hover:bg-slate-200 transition-colors">调整人员</button></>}</div><div className={`flex flex-col p-5 rounded-2xl h-[340px] transition-all duration-300 ${step === 4 ? 'border-2 border-green-400 bg-white shadow-md scale-[1.02]' : 'border-2 border-dashed border-slate-200 bg-transparent'}`}>{step === 4 && wizard && <><h3 className="font-bold text-slate-900 mb-3 text-sm shrink-0">准备就绪</h3><div className="flex-1 min-h-0 flex flex-col items-center justify-center text-center"><div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4 shrink-0 shadow-sm"><CheckCircle2 className="w-8 h-8" /></div><p className="text-base font-bold text-slate-900 mb-2">配置完成</p><div className="max-h-[100px] overflow-y-auto px-1 pr-2 w-full"><p className="text-xs text-slate-500 leading-relaxed text-left line-clamp-4">{wizard.readySummary}</p></div></div><button onClick={() => workspace && onComplete(workspace)} className="mt-3 shrink-0 w-full py-3 bg-green-500 text-white rounded-xl text-sm font-bold hover:bg-green-600 transition-all shadow-lg shadow-green-500/20 active:scale-[0.98]">生成工作流</button></>}</div></div></div><div className="border-t border-slate-100 p-4 px-8 flex items-center justify-between bg-white"><span className="text-sm font-bold text-slate-900">ShopGen AI 流程向导</span><button onClick={onClose} className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">关闭面板 <ChevronDown className="w-4 h-4" /></button></div></motion.div></div>;
+  return (
+    <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-8">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-[var(--bg-card)] rounded-[48px] shadow-3xl w-full max-w-6xl overflow-hidden flex flex-col border border-[var(--border-main)]">
+        <div className="p-16 pb-12 bg-[var(--bg-sidebar)] border-b border-[var(--border-soft)]">
+          <div className="flex items-center justify-between px-16 relative">
+            <div className="absolute top-6 left-24 right-24 h-1 bg-[var(--border-main)] z-0 rounded-full">
+              <motion.div className="h-full bg-green-500 rounded-full" animate={{ width: `${((step - 1) / 3) * 100}%` }} />
+            </div>
+            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={1} icon={MessageSquare} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Requirement</span></div>
+            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={2} icon={Wand2} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Decomposition</span></div>
+            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={3} icon={Users} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Deployment</span></div>
+            <div className="flex flex-col items-center gap-4 group"><StepIcon current={step} stepNum={4} icon={CheckCircle2} /><span className="text-xs font-black text-[var(--text-main)] uppercase tracking-[0.2em]">Validation</span></div>
+          </div>
+        </div>
+
+        <div className="p-10 px-16 flex-1 overflow-y-auto no-scrollbar bg-[var(--bg-app)]">
+          <div className="grid grid-cols-4 gap-8">
+            {/* Step 1: Input */}
+            <div className={`flex flex-col p-8 rounded-[40px] h-[360px] transition-all duration-500 ${step === 1 ? 'bg-[var(--bg-card)] shadow-2xl border-2 border-[var(--accent)] ring-8 ring-[var(--accent)]/5' : 'bg-[var(--bg-card)]/50 opacity-60'}`}>
+              <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Project Intent</h3>
+              {step === 1 ? (
+                <>
+                  <textarea className="flex-1 bg-[var(--bg-app)] border border-[var(--border-main)] rounded-2xl p-4 text-sm text-[var(--text-main)] font-medium outline-none focus:ring-2 focus:ring-[var(--accent)] transition-all resize-none shadow-inner" placeholder="Tell us about your product or event..." value={prompt} onChange={(e) => setPrompt(e.target.value)} autoFocus />
+                  {error && <p className="mt-2 text-[10px] text-red-500 font-bold uppercase">{error}</p>}
+                  <button onClick={startGenerate} disabled={!prompt.trim() || !runtime?.configured || loading} className="mt-6 w-full py-4 bg-[var(--accent)] text-[var(--bg-sidebar)] rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] shadow-xl disabled:opacity-30 active:scale-[0.98] transition-all">Analyze Goals</button>
+                </>
+              ) : (
+                <>
+                  <div className="flex-1 overflow-y-auto text-sm font-medium text-[var(--text-muted)] leading-relaxed italic pr-2"><p>{wizard?.prompt || prompt}</p></div>
+                  <button onClick={() => setStep(1)} className="mt-6 w-full py-3 bg-[var(--bg-app)] text-[var(--text-muted)] rounded-2xl text-xs font-black uppercase tracking-widest hover:text-[var(--text-main)] transition-all">Refine Requirements</button>
+                </>
+              )}
+            </div>
+
+            {/* Step 2: Thought */}
+            <div className={`flex flex-col p-8 rounded-[40px] h-[360px] transition-all duration-500 ${step === 2 ? 'bg-[var(--bg-card)] shadow-2xl border-2 border-[var(--accent)] ring-8 ring-[var(--accent)]/5' : 'bg-[var(--bg-card)]/50 opacity-60'}`}>
+               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Agent Logic</h3>
+               {step === 2 ? (
+                 <div className="flex-1 flex flex-col items-center justify-center text-center">
+                    <div className="w-12 h-12 border-4 border-[var(--border-main)] border-t-purple-500 rounded-full animate-spin mb-4" />
+                    <p className="text-xs font-black text-[var(--text-main)] uppercase tracking-widest">Master Agent is Strategizing...</p>
+                    <div className="mt-6 w-full flex-1 bg-[var(--bg-app)] rounded-2xl p-4 overflow-y-auto font-mono text-[9px] text-[var(--text-muted)] border border-[var(--border-main)] leading-relaxed italic no-scrollbar">
+                       {thought || "Gathering expertise..."}
+                       <span className="inline-block w-1 h-3 bg-purple-500 ml-1 animate-pulse" />
+                    </div>
+                 </div>
+               ) : wizard ? (
+                 <>
+                   <div className="flex-1 overflow-y-auto space-y-3 pr-2 no-scrollbar">
+                      {wizard.breakdown.map((item, i) => (
+                        <div key={i} className="flex gap-2 text-[11px] font-bold text-[var(--text-main)] leading-snug"><Check className="w-3 h-3 text-green-500 shrink-0" /> {item}</div>
+                      ))}
+                   </div>
+                   <button className="mt-6 w-full py-3 bg-[var(--bg-app)] text-[var(--text-muted)] rounded-2xl text-xs font-black uppercase tracking-widest cursor-default">Strategy Defined</button>
+                 </>
+               ) : null}
+            </div>
+
+            {/* Step 3: Team */}
+            <div className={`flex flex-col p-8 rounded-[40px] h-[360px] transition-all duration-500 ${step === 3 ? 'bg-[var(--bg-card)] shadow-2xl border-2 border-[var(--accent)] ring-8 ring-[var(--accent)]/5' : 'bg-[var(--bg-card)]/50 opacity-60'}`}>
+               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Expert Deployment</h3>
+               {step === 3 && wizard ? (
+                 <>
+                   <div className="flex-1 overflow-y-auto space-y-2 pr-2 no-scrollbar">
+                      {wizard.teamObjectives.map((assign, i) => {
+                        const agent = AGENTS[normalizeAgentId(assign.agentId)];
+                        return (
+                          <div key={i} className="bg-[var(--bg-app)] p-3 rounded-2xl border border-[var(--border-main)] flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-lg ${agent.color} text-white font-black text-xs flex items-center justify-center shadow-lg`}>{agent.initial}</div>
+                            <div className="min-w-0"><p className="text-[10px] font-black text-[var(--text-main)] truncate">{agent.name}</p><p className="text-[8px] font-bold text-[var(--text-muted)] truncate">{assign.objective}</p></div>
+                          </div>
+                        );
+                      })}
+                   </div>
+                   <button onClick={() => setStep(4)} className="mt-6 w-full py-4 bg-[var(--accent)] text-[var(--bg-sidebar)] rounded-2xl font-black text-sm uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all">Confirm Team</button>
+                 </>
+               ) : step > 3 && wizard ? (
+                 <div className="flex-1 flex flex-col justify-center gap-4">
+                    <div className="flex -space-x-3 justify-center">
+                       {wizard.teamAgentIds.slice(0, 5).map((id, i) => {
+                         const agent = AGENTS[normalizeAgentId(id)];
+                         return <div key={i} className={`w-12 h-12 rounded-full border-4 border-[var(--bg-card)] ${agent.color} text-white font-black flex items-center justify-center shadow-xl`}>{agent.initial}</div>
+                       })}
+                    </div>
+                    <div className="text-center font-black text-[10px] text-green-500 uppercase tracking-widest bg-green-500/10 py-2 rounded-xl border border-green-500/20">{wizard.teamAgentIds.length} Agents Ready</div>
+                 </div>
+               ) : null}
+            </div>
+
+            {/* Step 4: Ready */}
+            <div className={`flex flex-col p-8 rounded-[40px] h-[360px] transition-all duration-500 ${step === 4 ? 'bg-[var(--bg-card)] shadow-2xl border-2 border-[var(--accent)] ring-8 ring-[var(--accent)]/5' : 'bg-[var(--bg-card)]/50 opacity-60'}`}>
+               <h3 className="text-sm font-black text-[var(--text-main)] mb-4 uppercase tracking-[0.15em]">Infrastructure</h3>
+               {step === 4 && wizard ? (
+                 <div className="flex-1 flex flex-col items-center justify-center">
+                    <div className="w-16 h-16 bg-green-500/10 text-green-500 rounded-[24px] flex items-center justify-center mb-6 shadow-xl border border-green-500/20"><CheckCircle2 className="w-10 h-10" /></div>
+                    <p className="text-[10px] font-black text-[var(--text-muted)] leading-relaxed italic text-center mb-6 px-2">{wizard.readySummary}</p>
+                    <button onClick={() => workspace && onComplete(workspace)} className="w-full py-5 bg-green-500 text-white rounded-3xl font-black text-sm uppercase tracking-[0.2em] shadow-2xl shadow-green-500/40 hover:scale-[1.05] active:scale-[0.95] transition-all pulse-green">Synthesize Flow</button>
+                 </div>
+               ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8 px-16 bg-[var(--bg-sidebar)] border-t border-[var(--border-soft)] flex items-center justify-between">
+           <div className="flex items-center gap-4">
+              <div className="w-3 h-3 rounded-full bg-green-500" />
+              <span className="text-[10px] font-black text-[var(--text-main)] uppercase tracking-[0.3em]">ShopGen AI Orchestrator v2.0 // System Stable</span>
+           </div>
+           <button onClick={onClose} className="text-xs font-black text-[var(--text-muted)] uppercase tracking-widest hover:text-[var(--text-main)] flex items-center gap-2 transition-all">Terminate Protocol <ChevronDown className="w-4 h-4" /></button>
+        </div>
+      </motion.div>
+    </div>
+  );
 }

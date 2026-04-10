@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutGrid,
-  Play,
   Loader2,
   ChevronRight,
   Target,
@@ -22,6 +21,7 @@ import {
   Clock,
   Activity,
   CheckCircle2,
+  Image as ImageIcon,
 } from 'lucide-react';
 import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -50,8 +50,8 @@ const SKILL_ICONS: Record<string, any> = {
 function SkillBadge({ skill }: { skill: Skill }) {
   const Icon = SKILL_ICONS[skill.id] || LayoutGrid;
   return (
-    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 border border-slate-100 text-[10px] text-slate-500 font-medium whitespace-nowrap" title={skill.description}>
-      <Icon className="w-2.5 h-2.5 text-slate-400" />
+    <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-[var(--bg-app)] border border-[var(--border-main)] text-[10px] text-[var(--text-muted)] font-medium whitespace-nowrap" title={skill.description}>
+      <Icon className="w-2.5 h-2.5 text-[var(--text-muted)]" />
       {skill.name}
     </div>
   );
@@ -67,16 +67,7 @@ function extractImages(text: string): string[] {
   return images;
 }
 
-function stripMarkdown(text: string): string {
-  return text
-    .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
-    .replace(/\[[^\]]*\]/g, '') // Remove [Title] blocks often added by agents
-    .replace(/[#*`_~]/g, '') // Remove markdown symbols
-    .replace(/\s+/g, ' ') // Collapse whitespace
-    .trim();
-}
-
-export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: DashboardTask; index: number; onClick?: () => void; onRun?: (e: React.MouseEvent) => void; isRunning?: boolean }) {
+export function TaskCard({ task, index, onClick, isRunning, onRun }: { task: DashboardTask; index: number; onClick?: () => void; isRunning?: boolean; onRun?: (id: string) => void }) {
   const isExecuting = task.status === 'in-progress' || isRunning;
   
   return (
@@ -87,36 +78,44 @@ export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: Das
       transition={{ delay: index * 0.05, duration: 0.3 }} 
       whileHover={{ y: -4, transition: { duration: 0.2 } }} 
       onClick={onClick} 
-      className={`bg-white p-5 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group relative`}
+      className={`bg-[var(--bg-card)] p-5 rounded-3xl shadow-sm border border-[var(--border-main)] hover:shadow-xl hover:shadow-slate-500/10 transition-all cursor-pointer group relative`}
     >
       <div className="flex items-start justify-between mb-1">
-        <h4 className="font-bold text-slate-900 text-[15px] leading-snug group-hover:text-blue-600 transition-colors">
+        <h4 className="font-bold text-[var(--text-main)] text-[15px] leading-snug transition-colors">
           {task.title}
         </h4>
-        <button className="text-slate-300 hover:text-slate-500 transition-colors">
-           <Activity className="w-4 h-4 opacity-50 group-hover:opacity-100" />
-        </button>
+        <div className="flex items-center gap-2">
+          {task.status !== 'done' && onRun && (
+            <button 
+              onClick={(e) => { e.stopPropagation(); onRun(task.id); }}
+              className="p-1.5 rounded-lg bg-[var(--bg-app)] border border-[var(--border-main)] text-[var(--text-muted)] hover:text-[var(--accent)] transition-all"
+            >
+              <Activity className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <Activity className="w-4 h-4 text-[var(--text-muted)] opacity-50 group-hover:opacity-100" />
+        </div>
       </div>
       
-      <p className="text-[12px] text-slate-400 mb-5 font-medium">{task.workflow}</p>
+      <p className="text-[12px] text-[var(--text-muted)] mb-5 font-medium">{task.workflow}</p>
       
       <div className="mb-6">
-        <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2">
+        <div className="flex items-center justify-between text-[11px] font-bold text-[var(--text-muted)] mb-2">
           <span className="flex items-center gap-1.5 uppercase tracking-wide">
             <LayoutGrid className="w-3.5 h-3.5" /> Progress
           </span>
-          <span className="text-slate-900">{task.progress}/{task.totalSteps}</span>
+          <span className="text-[var(--text-main)]">{task.progress}/{task.totalSteps}</span>
         </div>
-        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
+        <div className="h-1.5 w-full bg-[var(--bg-app)] rounded-full overflow-hidden mb-1">
           <motion.div 
             initial={{ width: 0 }}
-            animate={{ width: `${(task.progress / task.totalSteps) * 100}%` }}
+            animate={{ width: `${(task.progress / (task.totalSteps || 1)) * 100}%` }}
             className={`h-full rounded-full ${task.progressColor} shadow-inner transition-all duration-700`} 
           />
         </div>
-        {task.status === 'in-progress' && task.currentStepLabel && (
-          <p className="text-[10px] text-orange-500 font-medium animate-pulse flex items-center gap-1">
-            <div className="w-1 h-1 rounded-full bg-orange-400" />
+        {isExecuting && task.currentStepLabel && (
+          <p className="text-[10px] text-orange-500 font-medium animate-pulse flex items-center gap-1 mt-1">
+            <span className="w-1 h-1 rounded-full bg-orange-400" />
             {task.currentStepLabel}
           </p>
         )}
@@ -124,11 +123,11 @@ export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: Das
       
       <div className="flex items-center justify-between">
         <div className={`px-4 py-1.5 rounded-2xl text-[11px] font-bold ${
-          task.status === 'done' ? 'bg-green-50 text-green-600' : 
-          task.status === 'in-progress' ? 'bg-orange-50 text-orange-600' : 
-          'bg-slate-50 text-slate-500'
+          task.status === 'done' ? 'bg-green-500/10 text-green-500' : 
+          task.status === 'in-progress' ? 'bg-orange-500/10 text-orange-500' : 
+          'bg-[var(--border-soft)] text-[var(--text-muted)]'
         }`}>
-          {task.date}
+          {task.status === 'done' ? '已完成' : task.status === 'in-progress' ? '执行中' : '待处理'}
         </div>
         
         <div className="flex items-center -space-x-2.5">
@@ -137,17 +136,12 @@ export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: Das
             return (
               <div 
                 key={i} 
-                className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${agent.color}`} 
+                className={`w-7 h-7 rounded-full border-2 border-[var(--bg-card)] flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${agent.color}`} 
               >
                 {agent.initial}
               </div>
             ); 
           })}
-          {task.agentIds.length > 3 && (
-            <div className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 bg-slate-50 shadow-sm">
-              +{task.agentIds.length - 3}
-            </div>
-          )}
         </div>
       </div>
 
@@ -160,42 +154,27 @@ export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: Das
   );
 }
 
-interface ColumnProps {
-  title: string;
-  status: 'todo' | 'in-progress' | 'done';
-  tasks: DashboardTask[];
-  icon: React.ReactNode;
-  color: string;
-  onRunTask?: (id: string) => void;
-  runningTaskId?: string | null;
-  onSelectTask: (id: string) => void;
-}
-
-const Column: React.FC<ColumnProps> = ({ title, status, tasks, icon, color, onRunTask, runningTaskId, onSelectTask }) => {
+const Column: React.FC<{ title: string; tasks: DashboardTask[]; icon: React.ReactNode; onSelectTask: (id: string) => void; onRunTask?: (id: string) => void; runningTaskId?: string | null }> = ({ title, tasks, icon, onSelectTask, onRunTask, runningTaskId }) => {
   return (
     <div className="flex flex-col w-[350px] shrink-0 h-full">
       <div className="flex items-center justify-between mb-5 px-2">
-        <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
-          {title} <span className="text-slate-400 font-medium">({tasks.length})</span>
+        <h3 className="text-[15px] font-bold text-[var(--text-main)] flex items-center gap-2">
+          {icon} {title} <span className="text-[var(--text-muted)] font-medium">({tasks.length})</span>
         </h3>
       </div>
-      <div className={`flex-1 overflow-y-auto flex flex-col gap-5 pb-6 pr-3 border-2 border-dashed border-slate-100 rounded-[32px] p-3 ${color}`}>
+      <div className={`flex-1 overflow-y-auto flex flex-col gap-5 pb-6 pr-3 border-2 border-dashed border-[var(--border-soft)] rounded-[32px] p-3 no-scrollbar`}>
         {tasks.map((task, index) => (
-          <React.Fragment key={task.id}>
-            <TaskCard 
-              task={task} 
-              index={index} 
-              onClick={() => onSelectTask(task.id)} 
-              onRun={(e) => { e.stopPropagation(); onRunTask?.(task.id); }} 
-              isRunning={runningTaskId === task.id}
-            />
-          </React.Fragment>
+          <TaskCard 
+            key={task.id}
+            task={task} 
+            index={index} 
+            onClick={() => onSelectTask(task.id)} 
+            onRun={onRunTask}
+            isRunning={runningTaskId === task.id}
+          />
         ))}
         {tasks.length === 0 && (
-          <div className="h-32 flex flex-col items-center justify-center text-sm text-slate-300 font-medium border-2 border-dashed border-slate-50 rounded-3xl">
-            <div className="mb-2 w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center">
-              {icon}
-            </div>
+          <div className="h-32 flex flex-col items-center justify-center text-sm text-[var(--text-muted)] font-medium border border-dashed border-[var(--border-main)] rounded-3xl opacity-50">
             暂无任务
           </div>
         )}
@@ -207,122 +186,106 @@ const Column: React.FC<ColumnProps> = ({ title, status, tasks, icon, color, onRu
 export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onClose: () => void }) {
   return (
     <>
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px] z-40 rounded-tl-2xl" onClick={onClose} />
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="absolute inset-0 bg-white z-50 flex flex-col flex-1 pl-4">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
-          <h2 className="text-lg font-bold text-slate-900">任务详情</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors"><ChevronRight className="w-5 h-5" /></button>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm z-40 rounded-tl-2xl" onClick={onClose} />
+      <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', stiffness: 300, damping: 30 }} className="absolute right-0 top-0 bottom-0 w-[85%] max-w-4xl bg-[var(--bg-card)] z-50 flex flex-col border-l border-[var(--border-main)] shadow-2xl">
+        <div className="p-6 border-b border-[var(--border-main)] flex items-center justify-between shrink-0 bg-[var(--header-glass)] backdrop-blur-md">
+          <div className="flex items-center gap-3">
+             <div className={`p-2 rounded-xl ${task.status === 'done' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
+                <Package className="w-5 h-5" />
+             </div>
+             <h2 className="text-lg font-bold text-[var(--text-main)]">任务执行详情</h2>
+          </div>
+          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-main)] p-2 rounded-xl hover:bg-[var(--bg-app)] transition-all"><ChevronRight className="w-6 h-6" /></button>
         </div>
-        <div className="p-10 flex-1 overflow-y-auto space-y-10 max-w-4xl mx-auto w-full">
+        
+        <div className="flex-1 overflow-y-auto p-10 space-y-12 no-scrollbar">
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <span className="text-[10px] font-black text-purple-500 bg-purple-500/10 px-3 py-1.5 rounded-full uppercase tracking-[0.15em] border border-purple-500/20">{task.workflow}</span>
+            </div>
+            <h3 className="text-4xl font-black text-[var(--text-main)] tracking-tight leading-[1.1]">{task.title}</h3>
+          </div>
+
           {extractImages(task.summary || '').length > 0 && (
-            <div className="mb-10">
-               <label className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 block">视觉资产库 (Visual Assets)</label>
+            <div className="space-y-4">
+               <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em] flex items-center gap-2">
+                  <ImageIcon className="w-3.5 h-3.5" /> Generated Visual Assets
+               </label>
                <ImageCarousel images={extractImages(task.summary || '')} />
             </div>
           )}
-          <div>
-            <div className="mb-4"><span className="text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-full uppercase tracking-wider">{task.workflow}</span></div>
-            <h3 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{task.title}</h3>
-          </div>
-          <div className="pt-6 border-t border-slate-100">
-            <label className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 block text-center">执行报告 / 核心交付物</label>
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-sm text-slate-700 leading-relaxed max-w-none prose prose-slate min-h-[120px]">
+
+          <div className="pt-8 border-t border-[var(--border-soft)]">
+            <div className="bg-[var(--bg-sidebar)] p-8 rounded-[32px] border border-[var(--border-main)] shadow-sm">
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
                 urlTransform={(url) => url.startsWith('shopgen-image://') ? url : url.startsWith('data:') ? url : defaultUrlTransform(url)}
                 components={{
-                  img: ({ node, ...props }: any) => <AsyncImage className="rounded-xl shadow-md border border-white mt-4 mb-4 object-cover w-full max-h-[320px] h-auto" {...props} />,
-                  table: ({ ...props }) => <div className="overflow-x-auto my-6 rounded-lg border border-slate-200"><table className="w-full text-left border-collapse bg-white" {...props} /></div>,
-                  thead: ({ ...props }) => <thead className="bg-slate-50" {...props} />,
-                  th: ({ ...props }) => <th className="px-4 py-3 border-b border-slate-200 font-bold text-slate-700 text-xs uppercase tracking-wider" {...props} />,
-                  td: ({ ...props }) => <td className="px-4 py-3 border-b border-slate-100 text-slate-600" {...props} />,
-                  h1: ({ ...props }) => <h1 className="text-xl font-bold text-slate-900 mt-8 mb-4 flex items-center gap-2 border-l-4 border-purple-500 pl-3" {...props} />,
-                  h2: ({ ...props }) => <h2 className="text-lg font-bold text-slate-900 mt-6 mb-3" {...props} />,
-                  h3: ({ ...props }) => <h3 className="text-base font-bold text-slate-900 mt-4 mb-2" {...props} />,
-                  p: ({ ...props }) => <p className="mb-4 last:mb-0" {...props} />,
-                  ul: ({ ...props }) => <ul className="list-disc pl-5 mb-4 space-y-2" {...props} />,
-                  li: ({ ...props }) => <li className="marker:text-purple-400" {...props} />,
+                  img: ({ node, ...props }: any) => <AsyncImage className="rounded-2xl shadow-lg border-4 border-[var(--bg-card)] mt-6 mb-6 object-cover w-full h-auto" {...props} />,
+                  table: ({ ...props }) => <div className="overflow-x-auto my-8 rounded-2xl border border-[var(--border-main)] shadow-inner"><table className="w-full text-left border-collapse bg-[var(--bg-card)]" {...props} /></div>,
+                  thead: ({ ...props }) => <thead className="bg-[var(--bg-app)]" {...props} />,
+                  th: ({ ...props }) => <th className="px-5 py-4 border-b border-[var(--border-main)] font-black text-[11px] text-[var(--text-muted)] uppercase tracking-widest" {...props} />,
+                  td: ({ ...props }) => <td className="px-5 py-4 border-b border-[var(--border-soft)] text-sm text-[var(--text-main)] font-medium" {...props} />,
+                  h1: ({ ...props }) => <h1 className="text-2xl font-black text-[var(--text-main)] mt-12 mb-6 border-l-4 border-purple-500 pl-4 tracking-tight" {...props} />,
+                  h2: ({ ...props }) => <h2 className="text-xl font-bold text-[var(--text-main)] mt-8 mb-4 tracking-tight" {...props} />,
+                  p: ({ ...props }) => <p className="mb-5 last:mb-0 text-[15px] leading-relaxed text-[var(--text-main)]/90" {...props} />,
+                  ul: ({ ...props }) => <ul className="list-disc pl-6 mb-6 space-y-3" {...props} />,
+                  li: ({ ...props }) => <li className="marker:text-purple-500" {...props} />,
                 }}
               >
-                {String(task.summary || '### 暂无执行产出\n该阶段尚未开始执行或未产生有效结论。').replace(/!\[([^\]]*)\]\(data:image\/[^;]+;base64,[^\)]+\)/g, '⚠️ *由于旧版图片过大导致卡顿，历史大图已被系统折叠，请运行新任务以体验极速生成组件！*')}
+                {String(task.summary || '### 暂无执行产出\n该阶段尚未产生有效交付物。').replace(/!\[([^\]]*)\]\(data:image\/[^;]+;base64,[^\)]+\)/g, '⚠️ *由于内容过大，旧版基线图片已被压缩折叠。*')}
               </ReactMarkdown>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col">
-               <span className="text-xs text-slate-500 block mb-1">当前状态</span>
-               <div className="mt-auto"><span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${task.dateColor}`}>{task.status === 'done' ? '已完成' : task.status === 'in-progress' ? '处理中' : '待处理'}</span></div>
+
+          <div className="grid grid-cols-2 gap-6">
+             <div className="bg-[var(--bg-app)] p-5 rounded-2xl border border-[var(--border-main)] flex flex-col gap-1">
+               <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Execution Status</span>
+               <span className={`text-lg font-bold ${task.status === 'done' ? 'text-green-500' : 'text-orange-500'}`}>{task.status === 'done' ? 'Completed' : 'Developing'}</span>
              </div>
-             <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col">
-               <span className="text-xs text-slate-500 block mb-1">执行进度</span>
-               <div className="mt-auto">
-                 <div className="flex items-center gap-2 mb-1">
-                   <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                     <div className={`h-full rounded-full ${task.progressColor} transition-all duration-700`} style={{ width: `${(task.progress / task.totalSteps) * 100}%` }} />
-                   </div>
-                   <span className="text-sm font-semibold text-slate-700">{task.progress}/{task.totalSteps}</span>
-                 </div>
-                 {task.status === 'in-progress' && task.currentStepLabel && (
-                   <p className="text-[10px] text-orange-500 font-bold animate-pulse truncate">正在执行: {task.currentStepLabel}</p>
-                 )}
+             <div className="bg-[var(--bg-app)] p-5 rounded-2xl border border-[var(--border-main)] flex flex-col gap-1">
+               <span className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest">Step Progression</span>
+               <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-[var(--border-main)] rounded-full overflow-hidden">
+                    <motion.div className={`h-full ${task.progressColor}`} initial={{ width: 0 }} animate={{ width: `${(task.progress / (task.totalSteps || 1)) * 100}%` }} />
+                  </div>
+                  <span className="text-lg font-black text-[var(--text-main)]">{task.progress}/{task.totalSteps}</span>
                </div>
-             </div>
+            </div>
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">参与 Agent</label>
-            <div className="flex flex-wrap gap-2">
+
+          <div className="space-y-4">
+            <label className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-[0.2em]">Operational Agents</label>
+            <div className="flex flex-wrap gap-3">
               {task.agentIds.map((agentId, i) => { 
                 const agent = AGENTS[normalizeAgentId(agentId)]; 
-                return <div key={i} className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold text-white ${agent.color}`}>{agent.initial}</div>
-                  <span className="text-sm font-medium">{agent.name}</span>
+                return <div key={i} className="flex items-center gap-3 bg-[var(--bg-app)] border border-[var(--border-main)] p-2 pr-5 rounded-2xl shadow-sm hover:scale-[1.02] transition-all">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black text-white ${agent.color} shadow-lg shadow-${agent.color}/20`}>{agent.initial}</div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-black text-[var(--text-main)]">{agent.name}</span>
+                  </div>
                 </div>; 
               })}
             </div>
           </div>
-          {task.skills && task.skills.length > 0 && (
-            <div>
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">调用技能 (Skills)</label>
-              <div className="flex flex-wrap gap-2">
-                {task.skills.map((skill) => (
-                  <div key={skill.id} className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl" title={skill.description}>
-                    <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100">
-                      {SKILL_ICONS[skill.id] ? React.createElement(SKILL_ICONS[skill.id], { className: "w-4 h-4 text-slate-500" }) : <LayoutGrid className="w-4 h-4 text-slate-500" />}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-900">{skill.name}</p>
-                      <p className="text-[10px] text-slate-500 line-clamp-1">{skill.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </motion.div>
     </>
   );
 }
 
-interface KanbanBoardProps {
-  tasks: DashboardTask[];
-  activeScenario: string;
-  onRunTask?: (id: string) => void;
-  runningTaskId?: string | null;
-}
-
-export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, activeScenario, onRunTask, runningTaskId }) => {
+export const KanbanBoard: React.FC<{ tasks: DashboardTask[]; activeScenario: string; onRunTask?: (id: string) => void; runningTaskId?: string | null }> = ({ tasks, activeScenario, onRunTask, runningTaskId }) => {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const scopedTasks = activeScenario === '总览' ? tasks : tasks.filter((task) => task.workflow === activeScenario);
   const selectedTask = scopedTasks.find(t => t.id === selectedTaskId);
   
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5, delay: 0.3 }} className="flex-1 overflow-hidden px-8 pb-8 pt-4 flex flex-col relative">
-      <div className="flex-1 overflow-x-auto overflow-y-hidden pb-4">
-        <div className="flex space-x-6 h-full min-w-max px-2">
-          <Column title="待执行" status="todo" tasks={scopedTasks.filter(t => t.status === 'todo')} icon={<Clock className="w-4 h-4" />} color="bg-slate-100/50" onRunTask={onRunTask} runningTaskId={runningTaskId} onSelectTask={setSelectedTaskId} />
-          <Column title="进行中" status="in-progress" tasks={scopedTasks.filter(t => t.status === 'in-progress')} icon={<Activity className="w-4 h-4" />} color="bg-blue-50/50" onRunTask={onRunTask} runningTaskId={runningTaskId} onSelectTask={setSelectedTaskId} />
-          <Column title="已完成" status="done" tasks={scopedTasks.filter(t => t.status === 'done')} icon={<CheckCircle2 className="w-4 h-4" />} color="bg-green-50/50" onRunTask={onRunTask} runningTaskId={runningTaskId} onSelectTask={setSelectedTaskId} />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex-1 overflow-hidden px-8 pb-8 pt-4 flex flex-col relative">
+      <div className="flex-1 overflow-x-auto pb-4 no-scrollbar">
+        <div className="flex space-x-8 h-full min-w-max px-2">
+          <Column title="To Do" tasks={scopedTasks.filter(t => t.status === 'todo')} icon={<Clock className="w-4 h-4 text-[var(--text-muted)]" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
+          <Column title="In Progress" tasks={scopedTasks.filter(t => t.status === 'in-progress' || runningTaskId === t.id)} icon={<Activity className="w-4 h-4 text-orange-500" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
+          <Column title="Completed" tasks={scopedTasks.filter(t => t.status === 'done' && runningTaskId !== t.id)} icon={<CheckCircle2 className="w-4 h-4 text-green-500" />} onSelectTask={setSelectedTaskId} onRunTask={onRunTask} runningTaskId={runningTaskId} />
         </div>
       </div>
       <AnimatePresence>

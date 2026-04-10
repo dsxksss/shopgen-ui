@@ -1,5 +1,33 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
+
+:root {
+  --bg-app: #F5F6FA;
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --text-main: #0F172A;
+  --text-muted: #64748B;
+  --border-soft: #F1F5F9;
+  --border-main: #E2E8F0;
+  --accent: #0F172A;
+  --accent-hover: #1E293B;
+  --sidebar-active: #F8FAFC;
+  --header-glass: rgba(255, 255, 255, 0.8);
+}
+
+.dark {
+  --bg-app: #0B0B0F;
+  --bg-card: #14141B;
+  --bg-sidebar: #101014;
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+  --border-soft: #1E1E26;
+  --border-main: #262630;
+  --accent: #F8FAFC;
+  --accent-hover: #E2E8F0;
+  --sidebar-active: #1E1E26;
+  --header-glass: rgba(16, 16, 20, 0.8);
+}
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -7,7 +35,33 @@
 
 body {
   font-family: var(--font-sans);
-  background-color: #F5F6FA;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Telegram-style Circular Reveal Transition */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+.theme-transitioning::view-transition-new(root) {
+  animation: 700ms cubic-bezier(0.4, 0, 0.2, 1) both clip-path-expand;
+}
+
+.theme-transitioning::view-transition-old(root) {
+  z-index: -1;
+}
+
+@keyframes clip-path-expand {
+  from {
+    clip-path: circle(0% at var(--reveal-x) var(--reveal-y));
+  }
+  to {
+    clip-path: circle(150% at var(--reveal-x) var(--reveal-y));
+  }
 }
 
 ::-webkit-scrollbar {
@@ -18,9 +72,9 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border-main);
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: var(--text-muted);
 }

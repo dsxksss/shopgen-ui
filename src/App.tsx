@@ -138,7 +138,7 @@ function MainContent({ activeMenu, handleMenuChange, runtime, setRuntime, histor
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#F5F6FA] relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-[var(--bg-app)] relative">
         {activeMenu === 'settings' ? (
           <SettingsPage runtime={runtime} onSaved={(r) => { setRuntime(r); handleMenuChange('overview'); }} />
         ) : (
@@ -215,8 +215,15 @@ export default function App() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+    document.documentElement.classList.toggle('dark', isDark);
+  }, []);
+
   return (
-    <div className="flex h-screen w-full bg-[#F5F6FA] text-slate-800 font-sans overflow-hidden">
+    <div className="flex h-screen w-full bg-[var(--bg-app)] overflow-hidden font-sans antialiased text-[var(--text-main)] transition-colors duration-300">
       <MainContent activeMenu={activeMenu} handleMenuChange={handleMenuChange} runtime={runtime} setRuntime={setRuntime} historyBundle={historyBundle} setHistoryBundle={setHistoryBundle} scenario={scenario} setScenario={setScenario} draftPrompt={draftPrompt} setDraftPrompt={setDraftPrompt} />
       <button
         onClick={async () => {
