@@ -1,56 +1,51 @@
 use regex::Regex;
 use reqwest::Client;
 use serde_json::{json, Value};
+use tauri::Manager;
+use base64::Engine;
 
 use crate::commands::get_runtime_status_internal;
 use crate::models::{OperationPlan, WorkflowStage};
 use crate::orchestrator::{agent_name, normalize_agent_id};
 use crate::ApiError;
 
-pub async fn request_openrouter_image(app: &tauri::AppHandle, prompt: &str) -> Result<String, ApiError> {
-    let status = get_runtime_status_internal(app);
-    let api_key = status
-        .openrouter_key
-        .filter(|key| !key.trim().is_empty())
-        .ok_or(ApiError::MissingEnv("OPENROUTER_API_KEY"))?;
+pub async fn request_doubao_image(_app: &tauri::AppHandle, prompt: &str, reference_image: Option<&str>) -> Result<String, ApiError> {
+    let api_key = "9428b708-cae9-4a67-9059-259a201c14f1"; // User provided Key
 
-    let body = json!({
-        "model": "sourceful/riverflow-v2-pro",
-        "messages": [{
-            "role": "user",
-            "content": [{ "type": "text", "text": prompt }]
-        }],
-        "modalities": ["image"]
+    let mut body = json!({
+        "model": "doubao-seedream-5-0-260128",
+        "prompt": prompt,
+        "sequential_image_generation": "disabled",
+        "response_format": "url",
+        "size": "2K",
+        "stream": false,
+        "watermark": true
     });
 
+    if let Some(img) = reference_image {
+        body["image"] = json!(img);
+    }
+
     let response = Client::new()
-        .post("https://openrouter.ai/api/v1/chat/completions")
+        .post("https://ark.cn-beijing.volces.com/api/v3/images/generations")
         .header("Authorization", format!("Bearer {}", api_key))
-        .header("Content-Type", "application/json")
         .json(&body)
         .send()
         .await
-        .map_err(|e| ApiError::RequestFailed(format!("OpenRouter request failed: {e}")))?;
+        .map_err(|e| ApiError::RequestFailed(e.to_string()))?;
 
     if !response.status().is_success() {
         let err_text = response.text().await.unwrap_or_default();
-        return Err(ApiError::RequestFailed(format!("OpenRouter error: {err_text}")));
+        return Err(ApiError::RequestFailed(format!("Doubao Image Error: {}", err_text)));
     }
 
-    let payload: serde_json::Value = response.json().await.map_err(|_| ApiError::ParseFailed)?;
+    let response_text = response.text().await.map_err(|e| ApiError::RequestFailed(e.to_string()))?;
+    let payload: Value = serde_json::from_str(&response_text).map_err(|_| ApiError::ParseFailed)?;
 
-    payload["choices"][0]["message"]["images"]
-        .as_array()
-        .and_then(|images| images.first())
-        .and_then(|image| image["image_url"]["url"].as_str())
+    payload["data"][0]["url"]
+        .as_str()
         .map(str::to_owned)
-        .or_else(|| {
-            // 回退方案：如果以文本/Base64形式直接返回在了 content 里
-            payload["choices"][0]["message"]["content"]
-                .as_str()
-                .map(str::to_owned)
-        })
-        .ok_or_else(|| ApiError::RequestFailed("OpenRouter did not return an image URL".into()))
+        .ok_or_else(|| ApiError::RequestFailed(format!("Doubao API did not return an image URL. Response: {}", response_text)))
 }
 
 pub async fn request_stage_execution(
@@ -76,7 +71,9 @@ pub async fn request_stage_execution(
     println!(">>> [{}] 正在组装 Prompt，已加载 {} 个技能 SOP...", agent_title, skills.len());
 
     let system_prompt = format!(
-        "You are the {agent_title} agent in ShopGen. Execute the assigned workflow stage based on the merchant intent and following the SOPs provided in your skills. Return only the final deliverable in Markdown. If a visual asset is needed, insert [IMAGE_PROMPT: detailed English image prompt].{skill_instructions}"
+        "You are the {agent_title} agent in ShopGen. Execute the assigned workflow stage based on the merchant intent and following the SOPs provided in your skills. Return only the final deliverable in Markdown. \
+        Note: The system will automatically extract any images found in the 'Merchant Intent' and use them as reference images for consistency when you use the [IMAGE_PROMPT: ...] tag. \
+        Return only the final deliverable in Markdown. If a visual asset is needed, insert [IMAGE_PROMPT: detailed English image prompt].{skill_instructions}"
     );
 
     crate::emit_log(app, "info", &format!("[{}] 开始思考任务「{}」...", agent_title, stage.name));
@@ -84,11 +81,21 @@ pub async fn request_stage_execution(
     let mut context_history = String::new();
     let completed_stages: Vec<_> = plan.workflow_stages.iter().filter(|s| s.status == "done").collect();
     if !completed_stages.is_empty() {
+        let re_b64 = Regex::new(r"!\[[^\]]*\]\(data:image/[^;]+;base64,[^\)]+\)").unwrap();
         context_history.push_str("\n\n## 上游环节已产出的背景信息 (Context History):\n");
         for prev in completed_stages {
-            context_history.push_str(&format!("### 阶段: {}\n负责人: {}\n产出产物:\n{}\n---\n", prev.name, prev.owner, prev.output.as_deref().unwrap_or("无内容")));
+            // 关键优化：剥离产物中的 Base64 字符串，防止 context window 爆炸导致 API 失败
+            let output_text = prev.output.as_deref().unwrap_or("无内容");
+            let scrubbed_output = re_b64.replace_all(output_text, "![图片描述]({历史大尺寸图片已省略})");
+            context_history.push_str(&format!("### 阶段: {}\n负责人: {}\n产出产物:\n{}\n---\n", prev.name, prev.owner, scrubbed_output));
         }
     }
+
+    // 尝试寻找全局参考图 (img2img)
+    let re_img = Regex::new(r"!\[.*?\]\((https?://.*?|data:image/.*?)\)").unwrap();
+    let ref_image = re_img.captures(&plan.merchant_intent)
+        .and_then(|cap| cap.get(1))
+        .map(|m| m.as_str());
 
     let user_prompt = format!(
         "Scenario: {}\nMerchant request: {}\n{}\n\nStage name: {}\nStage goal: {}\nStage action: {}\n\nReturn the concrete deliverable only.",
@@ -184,8 +191,26 @@ pub async fn request_stage_execution(
 
     for (tag, prompt) in &replacements {
         crate::emit_log(app, "info", &format!("[{}] 请求生成插图: {}", agent_title, prompt));
-        match request_openrouter_image(app, prompt).await {
-            Ok(image_url) => {
+        match request_doubao_image(app, prompt, ref_image).await {
+            Ok(mut image_url) => {
+                // 如果是 base64 图像，将其保存到本地避免庞大的 JSON 和前端主线程冻结
+                if image_url.starts_with("data:image/") {
+                    if let Some(i) = image_url.find("base64,") {
+                        let b64 = &image_url[i + 7..];
+                        if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(b64) {
+                            if let Ok(app_data) = app.path().app_data_dir() {
+                                let img_dir = app_data.join("images");
+                                let _ = std::fs::create_dir_all(&img_dir);
+                                let id = uuid::Uuid::new_v4().to_string();
+                                let path = img_dir.join(format!("{}.png", id));
+                                if std::fs::write(&path, &bytes).is_ok() {
+                                    image_url = format!("shopgen-image://{}", id);
+                                }
+                            }
+                        }
+                    }
+                }
+
                 crate::emit_log(app, "success", &format!("[{}] 插图生成成功", agent_title));
                 let replacement = if image_url.contains("![") {
                     image_url.clone() // 如果模型已经自己包了 Markdown

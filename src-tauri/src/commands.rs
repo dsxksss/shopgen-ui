@@ -145,3 +145,13 @@ pub async fn run_workspace_flow(
 ) -> Result<WorkspaceView, ApiError> {
     execute_workspace_flow_record(&app, &request_id, target_task_id.as_deref()).await
 }
+#[tauri::command]
+pub async fn load_image_asset(app: tauri::AppHandle, id: String) -> Result<Vec<u8>, String> {
+    use tauri::Manager;
+    let path = app.path().app_data_dir()
+        .map_err(|e| format!("Failed to get app data dir: {}", e))?
+        .join("images")
+        .join(format!("{}.png", id));
+        
+    std::fs::read(path).map_err(|e| e.to_string())
+}

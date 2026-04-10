@@ -121,15 +121,43 @@ pub async fn request_plan(app: &tauri::AppHandle, prompt: String, scenario: Stri
         return Err(ApiError::EmptyResponse);
     }
     
-    // 清洗 JSON：由于某些大模型即使被强制要求也会在前后附带 Markdown 文字，所以这里使用边界截取法
-    let clean_json = if let (Some(start), Some(end)) = (full_text.find('{'), full_text.rfind('}')) {
-        if start <= end {
-            full_text[start..=end].to_string()
-        } else {
-            full_text.clone()
+    // 增强型 JSON 提取逻辑：处理模型输出多个 JSON 块的情况（如：先输出分析 JSON，再输出计划 JSON）
+    let clean_json = {
+        let mut best_json = full_text.clone();
+        let mut max_score = -1;
+
+        // 尝试寻找所有可能的 JSON 块边界
+        let mut start_indices = Vec::new();
+        for (i, c) in full_text.char_indices() {
+             if c == '{' { start_indices.push(i); }
         }
-    } else {
-        full_text.clone()
+        
+        for &start in &start_indices {
+            // 从后往前找对应的结束括号
+            let mut end_indices = Vec::new();
+            for (i, c) in full_text.char_indices().skip(start) {
+                if c == '}' { end_indices.push(i); }
+            }
+            
+            // 限制探测范围，通常最大的 JSON 块在后面或覆盖全文
+            for &end in end_indices.iter().rev().take(5) {
+                let candidate = &full_text[start..=end];
+                if let Ok(val) = serde_json::from_str::<Value>(candidate) {
+                    // 打分机制：包含的关键字段越多，分数越高
+                    let mut score = 0;
+                    if val.get("workflowStages").is_some() || val.get("workflow_stages").is_some() { score += 10; }
+                    if val.get("agentAssignments").is_some() || val.get("agent_assignments").is_some() { score += 10; }
+                    if val.get("summary").is_some() { score += 5; }
+                    if val.get("execution_checklist").is_some() || val.get("executionChecklist").is_some() { score += 5; }
+                    
+                    if score > max_score {
+                        max_score = score;
+                        best_json = candidate.to_string();
+                    }
+                }
+            }
+        }
+        best_json
     };
 
     let payload: Value = serde_json::from_str(&clean_json).map_err(|e| {

@@ -65,7 +65,8 @@ pub fn run() {
             commands::delete_workspace,
             commands::rename_workspace,
             commands::toggle_pin_workspace,
-            commands::run_workspace_flow
+            commands::run_workspace_flow,
+            commands::load_image_asset
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

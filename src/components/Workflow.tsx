@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { AsyncImage } from './AsyncImage';
 import {
   ReactFlow,
   MiniMap,
@@ -59,7 +60,15 @@ export function WorkflowView({ workflow, hasPlan }: { workflow: WorkflowPayload 
         <div key={idx} className="bg-slate-50 border border-slate-200 rounded-xl p-4 overflow-hidden">
           <span className="text-xs font-bold text-slate-500 block mb-3 border-b border-slate-200 pb-2">{item.label}</span>
           <div className="prose prose-sm prose-slate max-w-none prose-img:rounded-xl prose-img:shadow-md prose-img:border prose-img:border-slate-200 prose-img:w-full prose-headings:font-bold prose-a:text-purple-600 text-sm">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{item.value}</ReactMarkdown>
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              urlTransform={(url) => url.startsWith('shopgen-image://') ? url : url.startsWith('data:') ? url : defaultUrlTransform(url)}
+              components={{
+                 img: ({ node, ...props }: any) => <AsyncImage {...props} />
+              }}
+            >
+              {String(item.value).replace(/!\[([^\]]*)\]\(data:image\/[^;]+;base64,[^\)]+\)/g, '⚠️ *由于旧版图片过大导致卡顿，历史大图已被系统折叠，请运行新任务以体验极速生成组件！*')}
+            </ReactMarkdown>
           </div>
         </div>
       ))}

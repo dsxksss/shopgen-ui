@@ -23,8 +23,10 @@ import {
   Activity,
   CheckCircle2,
 } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { AsyncImage } from './AsyncImage';
+import { ImageCarousel } from './Carousel';
 import type { DashboardTask, Skill } from '../lib/types';
 import { normalizeAgentId, AGENTS } from '../lib/utils';
 
@@ -55,6 +57,25 @@ function SkillBadge({ skill }: { skill: Skill }) {
   );
 }
 
+function extractImages(text: string): string[] {
+  const images: string[] = [];
+  const re = /!\[.*?\]\((.*?)\)/g;
+  let match;
+  while ((match = re.exec(text)) !== null) {
+    if (match[1]) images.push(match[1]);
+  }
+  return images;
+}
+
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/!\[.*?\]\(.*?\)/g, '') // Remove images
+    .replace(/\[[^\]]*\]/g, '') // Remove [Title] blocks often added by agents
+    .replace(/[#*`_~]/g, '') // Remove markdown symbols
+    .replace(/\s+/g, ' ') // Collapse whitespace
+    .trim();
+}
+
 export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: DashboardTask; index: number; onClick?: () => void; onRun?: (e: React.MouseEvent) => void; isRunning?: boolean }) {
   const isExecuting = task.status === 'in-progress' || isRunning;
   
@@ -66,60 +87,25 @@ export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: Das
       transition={{ delay: index * 0.05, duration: 0.3 }} 
       whileHover={{ y: -4, transition: { duration: 0.2 } }} 
       onClick={onClick} 
-      className={`bg-white p-5 rounded-2xl shadow-sm border ${isExecuting ? 'border-orange-200' : 'border-slate-100'} hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group relative overflow-hidden`}
+      className={`bg-white p-5 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:shadow-slate-200/50 transition-all cursor-pointer group relative`}
     >
-      {isExecuting && (
-        <motion.div 
-          className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 to-amber-400" 
-          initial={{ x: '-100%' }} 
-          animate={{ x: '100%' }} 
-          transition={{ repeat: Infinity, duration: 1.5, ease: 'linear' }} 
-        />
-      )}
-      
-      <div className="flex items-start justify-between mb-2">
-        <h4 className="font-bold text-slate-800 text-[15px] leading-snug group-hover:text-blue-600 transition-colors">
+      <div className="flex items-start justify-between mb-1">
+        <h4 className="font-bold text-slate-900 text-[15px] leading-snug group-hover:text-blue-600 transition-colors">
           {task.title}
         </h4>
-        <div className="flex items-center gap-1.5 ml-3 shrink-0">
-          {task.status !== 'done' && task.status !== 'in-progress' && !isRunning && onRun && (
-            <button 
-              onClick={(e) => { e.stopPropagation(); onRun(e); }} 
-              className="p-1.5 rounded-lg bg-slate-50 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-green-500 hover:text-white transition-all shadow-sm flex items-center justify-center" 
-              title="立即执行"
-            >
-              <Play className="w-3 h-3 fill-current" />
-            </button>
-          )}
-          {isExecuting && (
-            <div className="p-1.5 rounded-lg bg-orange-50 text-orange-500 flex items-center justify-center">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            </div>
-          )}
-          {task.status === 'done' && (
-            <div className="p-1.5 rounded-lg bg-green-50 text-green-500 flex items-center justify-center">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            </div>
-          )}
-        </div>
+        <button className="text-slate-300 hover:text-slate-500 transition-colors">
+           <Activity className="w-4 h-4 opacity-50 group-hover:opacity-100" />
+        </button>
       </div>
       
-      <p className="text-[11px] font-medium text-slate-400 mb-4 tracking-wide uppercase">{task.workflow}</p>
+      <p className="text-[12px] text-slate-400 mb-5 font-medium">{task.workflow}</p>
       
-      {task.summary && (
-        <div className="mb-4 bg-slate-50/80 p-3 rounded-xl border border-slate-100/50 backdrop-blur-sm">
-          <p className="text-[12px] text-slate-600 line-clamp-2 leading-relaxed italic">
-            {task.summary}
-          </p>
-        </div>
-      )}
-      
-      <div className="mb-5">
-        <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2 uppercase tracking-tighter">
-          <span className="flex items-center gap-1.5">
-            <LayoutGrid className="w-3 h-3" /> 任务进度
+      <div className="mb-6">
+        <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 mb-2">
+          <span className="flex items-center gap-1.5 uppercase tracking-wide">
+            <LayoutGrid className="w-3.5 h-3.5" /> Progress
           </span>
-          <span className="text-slate-600">{task.progress}/{task.totalSteps}</span>
+          <span className="text-slate-900">{task.progress}/{task.totalSteps}</span>
         </div>
         <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
           <motion.div 
@@ -130,44 +116,40 @@ export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: Das
         </div>
       </div>
       
-      {task.skills && task.skills.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-5">
-          {task.skills.slice(0, 3).map((skill) => (
-            <SkillBadge key={skill.id} skill={skill} />
-          ))}
-          {task.skills.length > 3 && (
-            <span className="text-[10px] text-slate-400 font-bold self-center bg-slate-50 px-1.5 py-0.5 rounded">
-              +{task.skills.length - 3}
-            </span>
-          )}
-        </div>
-      )}
-      
-      <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-        <div className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${task.status === 'in-progress' ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-500'}`}>
-          {task.status === 'in-progress' ? '推进中...' : task.date}
+      <div className="flex items-center justify-between">
+        <div className={`px-4 py-1.5 rounded-2xl text-[11px] font-bold ${
+          task.status === 'done' ? 'bg-green-50 text-green-600' : 
+          task.status === 'in-progress' ? 'bg-orange-50 text-orange-600' : 
+          'bg-slate-50 text-slate-500'
+        }`}>
+          {task.date}
         </div>
         
         <div className="flex items-center -space-x-2.5">
-          {task.agentIds.slice(0, 4).map((agentId, i) => { 
+          {task.agentIds.slice(0, 3).map((agentId, i) => { 
             const agent = AGENTS[normalizeAgentId(agentId)]; 
             return (
               <div 
                 key={i} 
-                className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm ring-1 ring-slate-100/50 ${agent.color}`} 
-                title={agent.name}
+                className={`w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-white shadow-sm ${agent.color}`} 
               >
                 {agent.initial}
               </div>
             ); 
           })}
-          {task.agentIds.length > 4 && (
-            <div className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 bg-slate-50 shadow-sm ring-1 ring-slate-100/50">
-              +{task.agentIds.length - 4}
+          {task.agentIds.length > 3 && (
+            <div className="w-7 h-7 rounded-full border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600 bg-slate-50 shadow-sm">
+              +{task.agentIds.length - 3}
             </div>
           )}
         </div>
       </div>
+
+      {isExecuting && (
+        <div className="absolute top-2 right-2">
+           <Loader2 className="w-4 h-4 text-orange-500 animate-spin" />
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -185,13 +167,17 @@ interface ColumnProps {
 
 const Column: React.FC<ColumnProps> = ({ title, status, tasks, icon, color, onRunTask, runningTaskId, onSelectTask }) => {
   return (
-    <div className="flex flex-col w-[340px] shrink-0 h-full">
-      <div className="flex items-center justify-between mb-4 px-1">
-        <h3 className="text-sm font-medium text-slate-500 flex items-center gap-2">
-          {icon} {title} ({tasks.length})
+    <div className="flex flex-col w-[350px] shrink-0 h-full">
+      <div className="flex items-center justify-between mb-5 px-2">
+        <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
+          {title} <span className="text-slate-400 font-medium">({tasks.length})</span>
         </h3>
+        <button className="flex items-center gap-1.5 text-slate-400 hover:text-slate-600 transition-colors text-[13px] font-bold">
+            <span className="w-5 h-5 flex items-center justify-center rounded-lg bg-slate-100"><Play className="w-2.5 h-2.5" /></span>
+            Add new task
+        </button>
       </div>
-      <div className={`flex-1 overflow-y-auto flex flex-col gap-4 pb-4 pr-2 border-2 border-dashed border-slate-200 rounded-2xl p-2 ${color}`}>
+      <div className={`flex-1 overflow-y-auto flex flex-col gap-5 pb-6 pr-3 border-2 border-dashed border-slate-100 rounded-[32px] p-3 ${color}`}>
         {tasks.map((task, index) => (
           <React.Fragment key={task.id}>
             <TaskCard 
@@ -203,7 +189,14 @@ const Column: React.FC<ColumnProps> = ({ title, status, tasks, icon, color, onRu
             />
           </React.Fragment>
         ))}
-        {tasks.length === 0 && <div className="h-24 flex items-center justify-center text-sm text-slate-400 font-medium">暂无任务</div>}
+        {tasks.length === 0 && (
+          <div className="h-32 flex flex-col items-center justify-center text-sm text-slate-300 font-medium border-2 border-dashed border-slate-50 rounded-3xl">
+            <div className="mb-2 w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center">
+              {icon}
+            </div>
+            暂无任务
+          </div>
+        )}
       </div>
     </div>
   );
@@ -213,23 +206,30 @@ export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onCl
   return (
     <>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/10 backdrop-blur-[1px] z-40 rounded-tl-2xl" onClick={onClose} />
-      <motion.div initial={{ x: 400, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 400, opacity: 0 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="absolute pt-4 top-0 right-0 bottom-0 w-[460px] bg-white border-l border-slate-200 shadow-2xl z-50 flex flex-col flex-1 pl-4 rounded-tl-2xl">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3, ease: 'easeInOut' }} className="absolute inset-0 bg-white z-50 flex flex-col flex-1 pl-4">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
           <h2 className="text-lg font-bold text-slate-900">任务详情</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100 transition-colors"><ChevronRight className="w-5 h-5" /></button>
         </div>
-        <div className="p-6 flex-1 overflow-y-auto space-y-6">
+        <div className="p-10 flex-1 overflow-y-auto space-y-10 max-w-4xl mx-auto w-full">
+          {extractImages(task.summary || '').length > 0 && (
+            <div className="mb-10">
+               <label className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 block">视觉资产库 (Visual Assets)</label>
+               <ImageCarousel images={extractImages(task.summary || '')} />
+            </div>
+          )}
           <div>
-            <div className="mb-3"><span className="text-xs font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-md uppercase tracking-wider">{task.workflow}</span></div>
-            <h3 className="text-xl font-bold text-slate-900 leading-snug">{task.title}</h3>
+            <div className="mb-4"><span className="text-xs font-bold text-purple-600 bg-purple-50 border border-purple-100 px-3 py-1.5 rounded-full uppercase tracking-wider">{task.workflow}</span></div>
+            <h3 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{task.title}</h3>
           </div>
-          <div>
-            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">执行结论 / 输出产物</label>
+          <div className="pt-6 border-t border-slate-100">
+            <label className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 block text-center">执行报告 / 核心交付物</label>
             <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 text-sm text-slate-700 leading-relaxed max-w-none prose prose-slate min-h-[120px]">
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
+                urlTransform={(url) => url.startsWith('shopgen-image://') ? url : url.startsWith('data:') ? url : defaultUrlTransform(url)}
                 components={{
-                  img: ({ ...props }) => <img className="rounded-xl shadow-md border border-white mt-4 mb-4 object-cover w-full max-h-[320px] h-auto" {...props} />,
+                  img: ({ node, ...props }: any) => <AsyncImage className="rounded-xl shadow-md border border-white mt-4 mb-4 object-cover w-full max-h-[320px] h-auto" {...props} />,
                   table: ({ ...props }) => <div className="overflow-x-auto my-6 rounded-lg border border-slate-200"><table className="w-full text-left border-collapse bg-white" {...props} /></div>,
                   thead: ({ ...props }) => <thead className="bg-slate-50" {...props} />,
                   th: ({ ...props }) => <th className="px-4 py-3 border-b border-slate-200 font-bold text-slate-700 text-xs uppercase tracking-wider" {...props} />,
@@ -242,7 +242,7 @@ export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onCl
                   li: ({ ...props }) => <li className="marker:text-purple-400" {...props} />,
                 }}
               >
-                {task.summary || '### 暂无执行产出\n该阶段尚未开始执行或未产生有效结论。'}
+                {String(task.summary || '### 暂无执行产出\n该阶段尚未开始执行或未产生有效结论。').replace(/!\[([^\]]*)\]\(data:image\/[^;]+;base64,[^\)]+\)/g, '⚠️ *由于旧版图片过大导致卡顿，历史大图已被系统折叠，请运行新任务以体验极速生成组件！*')}
               </ReactMarkdown>
             </div>
           </div>
