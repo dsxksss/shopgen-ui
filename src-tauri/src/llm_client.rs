@@ -9,8 +9,9 @@ use crate::models::{OperationPlan, WorkflowStage};
 use crate::orchestrator::{agent_name, normalize_agent_id};
 use crate::ApiError;
 
-pub async fn request_doubao_image(_app: &tauri::AppHandle, prompt: &str, reference_image: Option<&str>) -> Result<String, ApiError> {
-    let api_key = "9428b708-cae9-4a67-9059-259a201c14f1"; // User provided Key
+pub async fn request_doubao_image(app: &tauri::AppHandle, prompt: &str, reference_image: Option<&str>) -> Result<String, ApiError> {
+    let status = get_runtime_status_internal(app);
+    let api_key = status.openrouter_key.ok_or(ApiError::MissingEnv("IMAGE_ENGINE_KEY 未配置"))?;
 
     let mut body = json!({
         "model": "doubao-seedream-5-0-260128",
