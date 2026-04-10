@@ -48,7 +48,7 @@ pub fn run() {
     tauri::Builder::default()
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_title("ShopGen Operations Center");
+                let _ = window.set_title("ShopGen 智能电商运营中心");
                 #[cfg(debug_assertions)]
                 window.open_devtools();
             }
