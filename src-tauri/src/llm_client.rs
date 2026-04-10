@@ -179,7 +179,8 @@ pub async fn request_stage_execution(
 
     crate::emit_log(app, "success", &format!("[{}] 思考完成，正在解析产物...", agent_title));
 
-    let image_tag_re = Regex::new(r"\[(?:IMAGE_PROMPT|GEN_IMAGE):\s*([^\]]+)\]").map_err(|e| ApiError::RequestFailed(e.to_string()))?;
+    // 容错处理：某些模型在输出最后一张图时可能会省略最后的回括号，通过 (?:\]|$) 兼容
+    let image_tag_re = Regex::new(r"\[(?:IMAGE_PROMPT|GEN_IMAGE):\s*([^\]\r\n]+)(?:\]|$)").map_err(|e| ApiError::RequestFailed(e.to_string()))?;
     let replacements = image_tag_re
         .captures_iter(&text)
         .filter_map(|cap| {

@@ -172,10 +172,6 @@ const Column: React.FC<ColumnProps> = ({ title, status, tasks, icon, color, onRu
         <h3 className="text-[15px] font-bold text-slate-800 flex items-center gap-2">
           {title} <span className="text-slate-400 font-medium">({tasks.length})</span>
         </h3>
-        <button className="flex items-center gap-1.5 text-slate-400 hover:text-slate-600 transition-colors text-[13px] font-bold">
-            <span className="w-5 h-5 flex items-center justify-center rounded-lg bg-slate-100"><Play className="w-2.5 h-2.5" /></span>
-            Add new task
-        </button>
       </div>
       <div className={`flex-1 overflow-y-auto flex flex-col gap-5 pb-6 pr-3 border-2 border-dashed border-slate-100 rounded-[32px] p-3 ${color}`}>
         {tasks.map((task, index) => (
