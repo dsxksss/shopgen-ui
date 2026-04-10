@@ -84,6 +84,7 @@ export interface DashboardTask {
   progressColor: string;
   dateColor: string;
   summary: string;
+  currentStepLabel?: string;
   skills?: Skill[];
 }
 

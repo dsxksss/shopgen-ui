@@ -16,8 +16,10 @@ pub fn get_agent_skills(agent_id: &str) -> Vec<Skill> {
 
 pub fn agent_catalog() -> Vec<AgentProfile> {
     vec![
-        AgentProfile { id: "manager".into(), name: "店长".into(), title: "总协调与决策指挥".into(), summary: "负责理解商家诉求、拆解任务、调度美工，并输出最终执行决策。".into(), capabilities: vec!["任务拆解".into(), "进度监控".into(), "决策汇总".into()], skills: get_agent_skills("manager"), color: "from-sky-500 to-cyan-400".into() },
-        AgentProfile { id: "designer".into(), name: "美工".into(), title: "商品视觉与活动素材".into(), summary: "聚焦商品图、Banner、详情页视觉方向，输出适合电商转化的设计指令与素材建议。".into(), capabilities: vec!["商品图设计".into(), "Banner 视觉".into(), "详情页结构".into(), "设计提示词".into()], skills: get_agent_skills("designer"), color: "from-pink-500 to-rose-400".into() },
+        AgentProfile { id: "manager".into(), name: "店长".into(), title: "总协调与决策指挥".into(), summary: "负责理解商家诉求、拆解任务、调度团队，并输出全局经营决策。".into(), capabilities: vec!["任务拆解".into(), "进度监控".into(), "决策汇总".into()], skills: get_agent_skills("manager"), color: "from-sky-500 to-cyan-400".into() },
+        AgentProfile { id: "designer".into(), name: "美工".into(), title: "商品视觉与活动素材".into(), summary: "聚焦商品图、渲染图、Banner、详情页视觉方向。".into(), capabilities: vec!["商品图设计".into(), "Banner 视觉".into(), "详情页结构".into(), "设计提示词".into()], skills: get_agent_skills("designer"), color: "from-pink-500 to-rose-400".into() },
+        AgentProfile { id: "copywriter".into(), name: "文案".into(), title: "内容营销与卖点策划".into(), summary: "负责撰写吸引人的标题、详情页文案及品牌故事。".into(), capabilities: vec!["卖点提炼".into(), "标题优化".into(), "文案创作".into()], skills: get_agent_skills("copywriter"), color: "from-amber-500 to-orange-400".into() },
+        AgentProfile { id: "seo".into(), name: "优化师".into(), title: "搜索排名与关键词优化".into(), summary: "负责关键词研究、SEO 策略及流量增长方案。".into(), capabilities: vec!["关键词研究".into(), "SEO 审计".into(), "排名优化".into()], skills: get_agent_skills("seo"), color: "from-emerald-500 to-teal-400".into() },
     ]
 }
 
@@ -25,6 +27,8 @@ pub fn agent_name(id: &str) -> &'static str {
     match id {
         "manager" => "店长",
         "designer" => "美工",
+        "copywriter" => "文案",
+        "seo" => "优化师",
         _ => "店长",
     }
 }
@@ -33,6 +37,8 @@ pub fn normalize_agent_id(id: &str) -> String {
     match id.trim().to_lowercase().as_str() {
         "manager" | "店长" => "manager".into(),
         "designer" | "美工" => "designer".into(),
+        "copywriter" | "文案" => "copywriter".into(),
+        "seo" | "优化师" | "seo-specialist" => "seo".into(),
         _ => "manager".into(),
     }
 }
@@ -204,8 +210,8 @@ fn progress_for_status(status: &str, total_steps: u8) -> u8 {
     let normalized = status_to_task_status(status);
     match normalized {
         "done" => total_steps,
-        "in-progress" => ((total_steps as f32) * 0.6).ceil() as u8,
-        _ => ((total_steps as f32) * 0.2).ceil().max(1.0) as u8,
+        "in-progress" => ((total_steps as f32) * 0.5).ceil() as u8,
+        _ => 0,
     }
 }
 
@@ -219,7 +225,7 @@ pub fn build_tasks(plan: &OperationPlan) -> Vec<DashboardTask> {
             
         let related_stage_count = related_stages.len();
         let related_checklist_count = plan.execution_checklist.iter().filter(|item| normalize_agent_id(&item.owner) == agent_id).count();
-        let total_steps = u8::max(8, (related_stage_count.max(related_checklist_count).max(3) * 2) as u8);
+        let total_steps = ((related_stage_count + related_checklist_count) as u8).max(5);
         let task_status = status_to_task_status(&assignment.status).to_string();
 
         let mut actual_outputs = Vec::new();
@@ -251,6 +257,7 @@ pub fn build_tasks(plan: &OperationPlan) -> Vec<DashboardTask> {
             progress_color: if task_status == "done" { "bg-green-500".into() } else if task_status == "in-progress" { "bg-orange-400".into() } else { "bg-red-400".into() },
             date_color: if task_status == "done" { "text-slate-500 bg-slate-100".into() } else if task_status == "in-progress" { "text-orange-500 bg-orange-50".into() } else { "text-red-500 bg-red-50".into() },
             summary,
+            current_step_label: "".into(),
             skills: if agent_id == "manager" { vec![] } else { get_agent_skills(&agent_id) },
         }
     }).collect()
@@ -518,7 +525,7 @@ fn build_system_prompt() -> String {
         "你的核心目标是针对商家的诉求，生成一个【任务看板】与【执行流程图】完美对应的专业经营方案。",
         "## 重要规则：",
         "1. **看板与流程 1:1 对齐**：你生成的 `agentAssignments` 数组中的每一个任务，必须在 `workflowStages` 中有一个同名的阶段对应。看板有几个，流程就有几个。严禁出现看板 2 个、流程 7 个的情况。",
-        "2. **角色限制**：目前你的团队只有你（manager, 店长）和美工（designer）两个人可用。请不要分配任何其他角色。",
+        "2. **角色分工**：目前你的团队中有店长（manager）、美工（designer）、文案（copywriter）、优化师（seo）四种角色可用。请根据任务性质精准分配（如：视觉设计分给美工，卖点策划分给文案，搜索优化分给优化师，全局规划留给店长）。",
         "3. **动态终点**：流程的终点应根据业务逻辑自然结束（如：完成详情页设计、完成库存备货等），不要千篇一律地以“风险校验”结尾。",
         "## 当前可用的团队成员：",
         &profile_summaries,

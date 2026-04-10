@@ -18,7 +18,7 @@ import type { Node, Edge } from '@xyflow/react';
 import type { WorkflowPayload, WorkflowNodeItem, WorkspaceHistoryItem } from './types';
 
 export type AgentType = 'manager' | 'designer' | 'copywriter' | 'operator' | 'service' | 'finance' | 'warehouse';
-export type MenuKey = 'overview' | 'new-product' | 'promo' | 'daily';
+export type MenuKey = 'overview' | 'new-product' | 'promo' | 'daily' | 'settings';
 
 export const DEFAULT_PROMPTS: Record<string, string> = {
   '新品上架流程': '请帮我为春季新款女装做一套完整的新品上架方案，包含主图方向、标题卖点、上架节奏、库存建议和客服话术。',
@@ -48,6 +48,7 @@ export const MENU_TO_SCENARIO: Record<Exclude<MenuKey, 'overview'>, string> = {
   'new-product': '新品上架流程',
   promo: '促销活动策划',
   daily: '日常经营管理',
+  settings: '系统设置',
 };
 
 export function normalizeAgentId(value: string): AgentType {
@@ -62,6 +63,7 @@ export function scenarioToMenu(scenario: string): MenuKey {
     case '新品上架流程': return 'new-product';
     case '促销活动策划': return 'promo';
     case '日常经营管理': return 'daily';
+    case '系统设置': return 'settings';
     default: return 'overview';
   }
 }

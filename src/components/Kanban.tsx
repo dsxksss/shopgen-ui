@@ -107,13 +107,19 @@ export function TaskCard({ task, index, onClick, onRun, isRunning }: { task: Das
           </span>
           <span className="text-slate-900">{task.progress}/{task.totalSteps}</span>
         </div>
-        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden mb-1">
           <motion.div 
             initial={{ width: 0 }}
             animate={{ width: `${(task.progress / task.totalSteps) * 100}%` }}
             className={`h-full rounded-full ${task.progressColor} shadow-inner transition-all duration-700`} 
           />
         </div>
+        {task.status === 'in-progress' && task.currentStepLabel && (
+          <p className="text-[10px] text-orange-500 font-medium animate-pulse flex items-center gap-1">
+            <div className="w-1 h-1 rounded-full bg-orange-400" />
+            {task.currentStepLabel}
+          </p>
+        )}
       </div>
       
       <div className="flex items-center justify-between">
@@ -249,11 +255,16 @@ export function TaskDetailsDrawer({ task, onClose }: { task: DashboardTask; onCl
              </div>
              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex flex-col">
                <span className="text-xs text-slate-500 block mb-1">执行进度</span>
-               <div className="mt-auto flex items-center gap-2">
-                 <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                   <div className={`h-full rounded-full ${task.progressColor}`} style={{ width: `${(task.progress / task.totalSteps) * 100}%` }} />
+               <div className="mt-auto">
+                 <div className="flex items-center gap-2 mb-1">
+                   <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                     <div className={`h-full rounded-full ${task.progressColor} transition-all duration-700`} style={{ width: `${(task.progress / task.totalSteps) * 100}%` }} />
+                   </div>
+                   <span className="text-sm font-semibold text-slate-700">{task.progress}/{task.totalSteps}</span>
                  </div>
-                 <span className="text-sm font-semibold text-slate-700">{task.progress}/{task.totalSteps}</span>
+                 {task.status === 'in-progress' && task.currentStepLabel && (
+                   <p className="text-[10px] text-orange-500 font-bold animate-pulse truncate">正在执行: {task.currentStepLabel}</p>
+                 )}
                </div>
              </div>
           </div>

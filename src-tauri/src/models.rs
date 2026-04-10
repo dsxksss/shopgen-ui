@@ -117,6 +117,8 @@ pub struct DashboardTask {
     #[serde(default)]
     pub summary: String,
     #[serde(default)]
+    pub current_step_label: String,
+    #[serde(default)]
     pub skills: Vec<Skill>,
 }
 
